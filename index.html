@@ -10,15 +10,16 @@
       "imports": {
         "three": "./vendor/three.module.js",
         "three/addons/": "./vendor/addons/",
-        "./src/voxelEngine.js": "./src/voxelEngine.js?v=203",
-        "./src/voxelPrefabs.js": "./src/voxelPrefabs.js?v=203",
-        "./src/voxelTextures.js": "./src/voxelTextures.js?v=203",
-        "./src/entities.js": "./src/entities.js?v=203",
-        "./src/mapAndBuild.js": "./src/mapAndBuild.js?v=203",
-        "./src/flowField.js": "./src/flowField.js?v=203",
-        "./src/dioramaRenderer.js": "./src/dioramaRenderer.js?v=203",
-        "./src/iconStudio.js": "./src/iconStudio.js?v=203",
-        "./src/audio.js": "./src/audio.js?v=203"
+        "./src/renderStyle.js": "./src/renderStyle.js?v=205",
+        "./src/voxelEngine.js": "./src/voxelEngine.js?v=205",
+        "./src/voxelPrefabs.js": "./src/voxelPrefabs.js?v=205",
+        "./src/voxelTextures.js": "./src/voxelTextures.js?v=205",
+        "./src/entities.js": "./src/entities.js?v=205",
+        "./src/mapAndBuild.js": "./src/mapAndBuild.js?v=205",
+        "./src/flowField.js": "./src/flowField.js?v=205",
+        "./src/dioramaRenderer.js": "./src/dioramaRenderer.js?v=205",
+        "./src/iconStudio.js": "./src/iconStudio.js?v=205",
+        "./src/audio.js": "./src/audio.js?v=205"
       }
     }
   </script>
@@ -44,8 +45,8 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #2a7aa3;
-      font-family: "Arial Rounded MT Bold", "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
+      background: #8e9aa1;
+      font-family: "Noto Serif SC", "STZhongsong", "Songti SC", "Microsoft YaHei UI", serif;
     }
     #game-canvas {
       display: block;
@@ -61,18 +62,14 @@
       z-index: 12;
     }
 
-    /* Supercell / Clash-Style Heavy Outlined Game Typography */
+    /* Classical Ming Plaque & Woodblock Crisp Typography (No Cartoon Bubble Stroke!) */
     .g-txt {
-      color: #ffffff;
-      font-weight: 900;
-      letter-spacing: 0.3px;
+      color: #f4ebd9;
+      font-weight: 700;
+      letter-spacing: 0.6px;
       text-shadow:
-        0 2px 0 #3b2312,
-        -1.5px -1.5px 0 #3b2312,
-        1.5px -1.5px 0 #3b2312,
-        -1.5px 1.5px 0 #3b2312,
-        1.5px 1.5px 0 #3b2312,
-        0 3px 5px rgba(0, 0, 0, 0.45);
+        0 1.5px 2px rgba(15, 10, 6, 0.92),
+        0 0 6px rgba(15, 10, 6, 0.55);
     }
 
     button {
@@ -82,44 +79,47 @@
       outline: none;
       background: none;
       padding: 0;
-      transition: transform 0.08s cubic-bezier(0.2, 0.8, 0.2, 1);
+      transition: transform 0.08s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.12s ease;
+    }
+    button:hover {
+      filter: brightness(1.08);
     }
     button:active {
-      transform: scale(0.92) translateY(2px);
+      transform: scale(0.95) translateY(1px);
     }
 
-    /* Glossy Bevelled Game Button Surface */
+    /* Grounded Ming Lacquered Rosewood, Slate-Indigo, Cinnabar & Bronze Plaque Surfaces */
     .game-btn-wood {
-      background: linear-gradient(180deg, #f7d794 0%, #e1a954 52%, #c28332 100%);
-      border: 2.5px solid #4a2c14;
+      background: linear-gradient(180deg, #5c432d 0%, #422f1f 55%, #2e2014 100%);
+      border: 1.5px solid #a8864c;
       box-shadow:
-        inset 0 2.5px 0 rgba(255, 252, 235, 0.78),
-        inset 0 -3.5px 0 rgba(112, 64, 20, 0.65),
-        0 4px 10px rgba(0, 0, 0, 0.36);
+        inset 0 1px 0 rgba(235, 210, 165, 0.28),
+        inset 0 -2px 0 rgba(18, 11, 6, 0.72),
+        0 3px 8px rgba(0, 0, 0, 0.45);
     }
     .game-btn-blue {
-      background: linear-gradient(180deg, #60a5fa 0%, #2563eb 55%, #1d4ed8 100%);
-      border: 2.5px solid #172554;
+      background: linear-gradient(180deg, #374e63 0%, #26394a 55%, #1a2836 100%);
+      border: 1.5px solid #9ab0c2;
       box-shadow:
-        inset 0 2.5px 0 rgba(219, 234, 254, 0.75),
-        inset 0 -3.5px 0 rgba(23, 37, 84, 0.65),
-        0 4px 10px rgba(0, 0, 0, 0.36);
+        inset 0 1px 0 rgba(205, 224, 240, 0.25),
+        inset 0 -2px 0 rgba(10, 18, 28, 0.75),
+        0 3px 8px rgba(0, 0, 0, 0.45);
     }
     .game-btn-red {
-      background: linear-gradient(180deg, #f87171 0%, #dc2626 55%, #991b1b 100%);
-      border: 2.5px solid #450a0a;
+      background: linear-gradient(180deg, #8f2a22 0%, #6e1d17 55%, #4d120e 100%);
+      border: 1.5px solid #c99c52;
       box-shadow:
-        inset 0 2.5px 0 rgba(254, 226, 226, 0.75),
-        inset 0 -3.5px 0 rgba(69, 10, 10, 0.65),
-        0 4px 10px rgba(0, 0, 0, 0.36);
+        inset 0 1px 0 rgba(245, 195, 175, 0.28),
+        inset 0 -2px 0 rgba(36, 6, 4, 0.75),
+        0 3px 8px rgba(0, 0, 0, 0.45);
     }
     .game-btn-green {
-      background: linear-gradient(180deg, #4ade80 0%, #16a34a 55%, #15803d 100%);
-      border: 2.5px solid #052e16;
+      background: linear-gradient(180deg, #3d593e 0%, #2b422c 55%, #1d2e1e 100%);
+      border: 1.5px solid #9cb084;
       box-shadow:
-        inset 0 2.5px 0 rgba(220, 252, 231, 0.78),
-        inset 0 -3.5px 0 rgba(5, 46, 22, 0.65),
-        0 4px 10px rgba(0, 0, 0, 0.36);
+        inset 0 1px 0 rgba(215, 232, 195, 0.25),
+        inset 0 -2px 0 rgba(10, 22, 12, 0.75),
+        0 3px 8px rgba(0, 0, 0, 0.45);
     }
 
     /* =====================================================================
@@ -142,6 +142,7 @@
 
     /* Top-Left: Crusader Lord Crest + HP Bar + Morale/Tax Badge */
     .lord-hud-cluster {
+      position: relative;
       display: flex;
       flex-direction: column;
       gap: calc(6 * var(--u));
@@ -151,12 +152,12 @@
       align-items: center;
     }
     #lord-crest-shield {
-      width: calc(48 * var(--u));
-      height: calc(52 * var(--u));
-      border-radius: calc(12 * var(--u)) calc(12 * var(--u)) calc(22 * var(--u)) calc(22 * var(--u));
-      background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
-      border: 3px solid #facc15;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4), inset 0 2px 0 rgba(255,255,255,0.6);
+      width: calc(46 * var(--u));
+      height: calc(50 * var(--u));
+      border-radius: calc(8 * var(--u)) calc(8 * var(--u)) calc(18 * var(--u)) calc(18 * var(--u));
+      background: linear-gradient(180deg, #6e221b 0%, #3d110d 100%);
+      border: 2px solid #c99c52;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,230,185,0.35);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -209,15 +210,21 @@
 
     /* Sub-row: Tax/Morale Orb + Rewarded Supply Chest Orb */
     .left-orbs-row {
+      position: absolute;
+      top: calc(56 * var(--u));
+      left: 0;
+      width: max-content;
       display: flex;
       align-items: center;
       gap: calc(7 * var(--u));
       padding-left: calc(2 * var(--u));
     }
     .mini-orb-btn {
-      height: calc(36 * var(--u));
-      padding: 0 calc(11 * var(--u));
-      border-radius: 99px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      height: calc(34 * var(--u));
+      padding: 0 calc(10 * var(--u));
+      border-radius: calc(6 * var(--u));
       display: inline-flex;
       align-items: center;
       gap: calc(5 * var(--u));
@@ -231,29 +238,29 @@
       gap: calc(6 * var(--u));
     }
     .wave-banner {
-      height: calc(42 * var(--u));
-      padding: 0 calc(15 * var(--u));
-      border-radius: 99px;
+      height: calc(38 * var(--u));
+      padding: 0 calc(16 * var(--u));
+      border-radius: calc(6 * var(--u));
       display: flex;
       align-items: center;
       gap: calc(7 * var(--u));
-      font-size: calc(14.5 * var(--u));
+      font-size: calc(14 * var(--u));
       white-space: nowrap;
       flex-shrink: 0;
-      border: 3px solid #5c3a16;
-      box-shadow: inset 0 2px 0 rgba(255,255,255,0.6), 0 4px 10px rgba(0,0,0,0.35);
+      border: 1.5px solid #b89456;
+      box-shadow: inset 0 1px 0 rgba(255,236,195,0.25), 0 4px 10px rgba(0,0,0,0.45);
     }
     .wave-banner.day {
-      background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%);
+      background: linear-gradient(180deg, rgba(58, 41, 25, 0.94) 0%, rgba(36, 24, 14, 0.96) 100%);
     }
     .wave-banner.urgent {
-      background: linear-gradient(180deg, #fca5a5 0%, #dc2626 100%);
-      border-color: #450a0a;
+      background: linear-gradient(180deg, #8c261e 0%, #571410 100%);
+      border-color: #e2b568;
       animation: pulseScale 0.55s infinite alternate;
     }
     .wave-banner.night {
-      background: linear-gradient(180deg, #6366f1 0%, #312e81 100%);
-      border-color: #1e1b4b;
+      background: linear-gradient(180deg, #273449 0%, #161f2e 100%);
+      border-color: #7c93ad;
     }
     @keyframes pulseScale {
       from { transform: scale(1); }
@@ -326,16 +333,16 @@
       z-index: 24;
     }
     .stamp-btn {
-      width: calc(82 * var(--u));
-      height: calc(86 * var(--u));
-      border-radius: calc(18 * var(--u));
+      width: calc(80 * var(--u));
+      height: calc(84 * var(--u));
+      border-radius: calc(10 * var(--u));
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: flex-end;
       padding-bottom: calc(6 * var(--u));
       position: relative;
-      border-width: 3px;
+      border-width: 2px;
     }
     .stamp-btn.active {
       outline: 3.5px solid #fef08a;
@@ -598,7 +605,7 @@
     /* Floating Taunts & Toasts */
     #taunt-banner {
       position: fixed;
-      top: calc(62 * var(--u) + var(--safe-top));
+      top: calc(104 * var(--u) + var(--safe-top));
       left: 50%;
       transform: translateX(-50%);
       background: rgba(69, 10, 10, 0.92);
@@ -614,7 +621,7 @@
     }
     #toast-msg {
       position: fixed;
-      top: calc(102 * var(--u) + var(--safe-top));
+      top: calc(160 * var(--u) + var(--safe-top));
       left: 50%;
       transform: translateX(-50%);
       background: rgba(28, 20, 12, 0.92);
@@ -1419,8 +1426,9 @@
     <button id="btn-stance-wheel" class="game-btn-blue" title="点击切换全军战阵姿态 (固守 / 迎击 / 平海总攻)">
       <span class="w-ico" id="stance-ico">
         <svg class="hud-svg" viewBox="0 0 28 28">
-          <path d="M14 2L4 6.5v7c0 6.5 4.3 10.8 10 12.5 5.7-1.7 10-6 10-12.5v-7L14 2z" fill="#eff6ff" stroke="#172554" stroke-width="2.4"/>
-          <path d="M14 5.5v17M7.5 12.5h13" stroke="#dc2626" stroke-width="3.2" stroke-linecap="round"/>
+          <circle cx="14" cy="14" r="10.5" fill="#9c7234" stroke="#2e1d0c" stroke-width="2.2"/>
+          <circle cx="14" cy="14" r="6.8" fill="none" stroke="#e2b96b" stroke-width="1.8"/>
+          <circle cx="14" cy="14" r="2.8" fill="#8f241e"/>
         </svg>
       </span>
       <span class="w-lbl g-txt" id="stance-lbl">固守</span>
@@ -1448,6 +1456,6 @@
     </div>
   </div>
 
-  <script type="module" src="./src/main.js?v=203"></script>
+  <script type="module" src="./src/main.js?v=206"></script>
 </body>
 </html>

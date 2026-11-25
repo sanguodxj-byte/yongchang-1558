@@ -4,7 +4,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+import { DIORAMA_LOOK } from './renderStyle.js';
 
 export const atmosphereTime = { value: 0 };
 
@@ -166,12 +166,15 @@ export class ToonOutlinePass extends Pass {
         uCameraFar: { value: 180.0 },
         uIsOrtho: { value: 1.0 },
         uWorldScale: { value: 0.02 },
-        // Pure silhouette depth outline (zero internal micro-voxel normal flicker on camera pan!)
-        uDepthBase: { value: 0.52 },
-        uDepthStrength: { value: 0.72 },
+        // Subtle Gongbi/Woodblock silhouette crease (grounded historical look — NOT heavy comic-book ink!)
+        uDepthBase: { value: 0.58 },
+        uDepthStrength: { value: DIORAMA_LOOK.post.outline },
         uNormalStrength: { value: 0.0 },
         uCreaseFade: { value: 0.0 },
-        uInkBase: { value: new THREE.Vector3(0.028, 0.019, 0.012) },
+        uInkBase: { value: new THREE.Vector3(0.085, 0.062, 0.045) },
+        uProjectionInverse: { value: new THREE.Matrix4() },
+        uContactRadius: { value: DIORAMA_LOOK.post.contactRadius },
+        uContactStrength: { value: DIORAMA_LOOK.post.contactStrength },
       },
       vertexShader: /* glsl */ `
         varying vec2 vUv;
@@ -194,6 +197,9 @@ export class ToonOutlinePass extends Pass {
         uniform float uNormalStrength;
         uniform float uCreaseFade;
         uniform vec3 uInkBase;
+        uniform mat4 uProjectionInverse;
+        uniform float uContactRadius;
+        uniform float uContactStrength;
         varying vec2 vUv;
 
         vec3 safeNorm3(vec3 v) {
@@ -215,6 +221,31 @@ export class ToonOutlinePass extends Pass {
         float decodeLinearDepth(float d16) {
           float dNorm = clamp((d16 - 2.0) / 65533.0, 0.0, 1.0);
           return uCameraNear + dNorm * (uCameraFar - uCameraNear);
+        }
+        vec3 viewPosition(vec2 uv, float depth) {
+          vec4 p = uProjectionInverse * vec4(uv * 2.0 - 1.0, 0.0, 1.0);
+          p.xyz /= p.w;
+          return uIsOrtho > 0.5 ? vec3(p.xy, -depth) : p.xyz * (depth / -p.z);
+        }
+        // Reuse the outline depth/normal prepass. A fixed world-space radius
+        // keeps contact shading the same size through zoom and high-DPI resize.
+        float contactOcclusion(vec3 position, vec3 normal, float worldPerPixel) {
+          float radiusPx = max(uContactRadius / max(worldPerPixel, 0.0001), 1.0);
+          float occlusion = 0.0;
+          for (int i = 0; i < 8; i++) {
+            float angle = float(i) * 2.39996323;
+            float reach = sqrt((float(i) + 0.5) / 8.0);
+            vec2 uv = vUv + vec2(cos(angle), sin(angle)) * reach * radiusPx * uTexel;
+            if (uv.x <= 0.0 || uv.y <= 0.0 || uv.x >= 1.0 || uv.y >= 1.0) continue;
+            float packed = unpackDepth16(texture2D(tNormalDepth, uv).ba);
+            if (packed < 1.5) continue;
+            vec3 delta = viewPosition(uv, decodeLinearDepth(packed)) - position;
+            float distance = length(delta);
+            float horizon = max(dot(normal, delta) / max(distance, 0.001) - 0.12, 0.0);
+            float falloff = 1.0 - smoothstep(uContactRadius * 0.15, uContactRadius, distance);
+            occlusion += horizon * falloff;
+          }
+          return min(0.36, occlusion * (uContactStrength / 8.0));
         }
         vec3 sanitizeHdr(vec3 c) {
           vec3 safe = vec3(
@@ -261,6 +292,12 @@ export class ToonOutlinePass extends Pass {
           float dR = decodeLinearDepth(kR);
           float dT = decodeLinearDepth(kT);
           float dB = decodeLinearDepth(kB);
+
+          if (mC > 0.5 && uContactStrength > 0.0) {
+            float wpp = uIsOrtho > 0.5 ? uWorldScale : dC * uWorldScale;
+            float contact = contactOcclusion(viewPosition(vUv, dC), octDecode(sC.rg), wpp);
+            baseRgb *= vec3(1.0) - contact * vec3(1.0, 0.94, 0.85);
+          }
 
           float minD = mC > 0.5 ? dC : 1e6;
           vec2 fgUv = vUv;
@@ -333,8 +370,9 @@ export class ToonOutlinePass extends Pass {
   }
 
   setSize(width, height) {
-    const bw = Math.max(1, Math.round(width * this.pixelRatio));
-    const bh = Math.max(1, Math.round(height * this.pixelRatio));
+    // EffectComposer passes physical pixels, including device pixel ratio.
+    const bw = Math.max(1, Math.round(width));
+    const bh = Math.max(1, Math.round(height));
     this.rtNormalDepth.setSize(bw, bh);
     this.outlineMat.uniforms.uTexel.value.set(1 / bw, 1 / bh);
   }
@@ -357,6 +395,7 @@ export class ToonOutlinePass extends Pass {
     }
     this.outlineMat.uniforms.uCameraNear.value = this.camera.near;
     this.outlineMat.uniforms.uCameraFar.value = this.camera.far;
+    this.outlineMat.uniforms.uProjectionInverse.value.copy(this.camera.projectionMatrixInverse);
     this.normalDepthMat.uniforms.uCameraNear.value = this.camera.near;
     this.normalDepthMat.uniforms.uCameraFar.value = this.camera.far;
 
@@ -421,12 +460,14 @@ export class ToonOutlinePass extends Pass {
 const DioramaFinalShader = {
   uniforms: {
     tDiffuse: { value: null },
-    uExposure: { value: 0.98 },
+    uExposure: { value: DIORAMA_LOOK.day.exposure },
     uTime: { value: 0 },
-    uSaturation: { value: 1.24 },
-    uContrast: { value: 1.11 },
-    uVignette: { value: 0.22 },
-    uGrain: { value: 0.008 },
+    uSaturation: { value: DIORAMA_LOOK.day.saturation },
+    uContrast: { value: DIORAMA_LOOK.day.contrast },
+    uVignette: { value: DIORAMA_LOOK.post.vignette },
+    uGrain: { value: DIORAMA_LOOK.post.grain },
+    uShadowTint: { value: new THREE.Vector3(...DIORAMA_LOOK.day.shadowTint) },
+    uHighlightTint: { value: new THREE.Vector3(...DIORAMA_LOOK.day.highlightTint) },
     uAspect: { value: 16 / 9 },
   },
   vertexShader: /* glsl */ `
@@ -445,6 +486,8 @@ const DioramaFinalShader = {
     uniform float uVignette;
     uniform float uGrain;
     uniform float uAspect;
+    uniform vec3 uShadowTint;
+    uniform vec3 uHighlightTint;
     varying vec2 vUv;
 
     vec3 rrtOdtFit(vec3 v) {
@@ -483,8 +526,7 @@ const DioramaFinalShader = {
       float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));
       c = mix(vec3(luma), c, uSaturation);
       c = (c - 0.5) * uContrast + 0.5;
-      // Warm golden highlights + soft sky-teal shadows (Clash of Clans / My Civilization grade!)
-      c += mix(vec3(-0.018, 0.008, 0.028), vec3(0.036, 0.014, -0.026), smoothstep(0.15, 0.85, luma));
+      c += mix(uShadowTint, uHighlightTint, smoothstep(0.15, 0.85, luma));
       vec2 q = (vUv - 0.5) * vec2(uAspect, 1.0) / max(uAspect, 1.0);
       float vig = smoothstep(0.35, 0.96, length(q) * 1.15);
       c = mix(c, c * vec3(0.68, 0.74, 0.85), vig * uVignette * 1.4);
@@ -501,11 +543,13 @@ export class DioramaPostFx {
     const bw = Math.max(1, Math.floor(width * pr));
     const bh = Math.max(1, Math.floor(height * pr));
 
-    const rt = new THREE.WebGLRenderTarget(bw, bh, {
+    const rt = new THREE.WebGLRenderTarget(width, height, {
       type: THREE.HalfFloatType,
-      samples: 2,
+      samples: Math.min(DIORAMA_LOOK.post.samples, renderer.capabilities.maxSamples),
     });
     this.composer = new EffectComposer(renderer, rt);
+    // A supplied target sets the composer's logical size. Apply DPR once here.
+    this.composer.setSize(width, height);
     this.composer.addPass(new RenderPass(scene, camera));
 
     this.outlinePass = new ToonOutlinePass(scene, camera, width, height, pr);
@@ -513,10 +557,10 @@ export class DioramaPostFx {
 
     // Selective HDR Bloom: threshold 1.72 linear so ONLY true HDR emissives (fire, braziers, stained-glass & sun sparkles) glow!
     this.bloomPass = new UnrealBloomPass(
-      new THREE.Vector2(Math.max(1, Math.floor(bw / 2)), Math.max(1, Math.floor(bh / 2))),
-      0.34,
-      0.44,
-      1.72
+      new THREE.Vector2(bw, bh),
+      DIORAMA_LOOK.post.bloomStrength,
+      DIORAMA_LOOK.post.bloomRadius,
+      DIORAMA_LOOK.post.bloomThreshold
     );
     this.composer.addPass(this.bloomPass);
 
@@ -527,12 +571,8 @@ export class DioramaPostFx {
 
   setSize(width, height) {
     const pr = this.renderer.getPixelRatio();
-    const bw = Math.max(1, Math.floor(width * pr));
-    const bh = Math.max(1, Math.floor(height * pr));
     this.composer.setPixelRatio(pr);
     this.composer.setSize(width, height);
-    this.outlinePass.setSize(width, height);
-    this.bloomPass.resolution.set(Math.max(1, Math.floor(bw / 2)), Math.max(1, Math.floor(bh / 2)));
     this.finalPass.uniforms.uAspect.value = width / Math.max(1, height);
   }
 
@@ -542,18 +582,22 @@ export class DioramaPostFx {
     const prevOutput = this.renderer.outputColorSpace;
     this.renderer.toneMapping = THREE.NoToneMapping;
     this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
-    this.composer.render(dt);
-    this.renderer.toneMapping = prevTone;
-    this.renderer.outputColorSpace = prevOutput;
+    try {
+      this.composer.render(dt);
+    } finally {
+      this.renderer.toneMapping = prevTone;
+      this.renderer.outputColorSpace = prevOutput;
+    }
   }
 }
 
-// My Civilization's Stylized Animated Ripple + Sun-Sparkle Water Shader!
+// Slow directional ripples, lit wave normals and restrained shoreline foam.
 export function applyStylizedWaterShader(mat) {
-  mat.customProgramCacheKey = () => 'civ-stronghold-water-v2';
+  mat.customProgramCacheKey = () => 'yongchang-water-v4';
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uWaterTime = atmosphereTime;
-    shader.uniforms.uDeepColor = { value: new THREE.Color('#1a5f87') };
+    shader.uniforms.uDeepColor = { value: new THREE.Color(DIORAMA_LOOK.water.deep) };
+    shader.uniforms.uShallowColor = { value: new THREE.Color(DIORAMA_LOOK.water.shallow) };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nattribute float aShore;\nvarying vec3 vWaterWorld;\nvarying float vShore;')
       .replace(
@@ -572,6 +616,7 @@ export function applyStylizedWaterShader(mat) {
         `#include <common>
         uniform float uWaterTime;
         uniform vec3 uDeepColor;
+        uniform vec3 uShallowColor;
         varying vec3 vWaterWorld;
         varying float vShore;
         float wHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -588,30 +633,32 @@ export function applyStylizedWaterShader(mat) {
         `#include <color_fragment>
         vec2 wP = vWaterWorld.xz;
         float wT = uWaterTime;
-        float wN = wNoise(wP * 0.72 + vec2(wT * 0.16, -wT * 0.11)) * 0.62
-                 + wNoise(wP * 1.85 - vec2(wT * 0.22, wT * 0.09)) * 0.38;
-        float wBand = abs(fract(wN * 3.6 + wT * 0.06) - 0.5);
-        float wAA = fwidth(wN * 3.6) * 1.25 + 0.0001;
-        float wLine = 1.0 - smoothstep(0.0, wAA + 0.036, wBand);
-        // Crystal turquoise shallows -> rich cerulean deep gradient + lapping white shoreline foam!
-        float depthWave = smoothstep(0.25, 0.78, wNoise(wP * 0.22 + vec2(0.0, wT * 0.03)));
-        vec3 shallowTurq = vec3(0.20, 0.77, 0.86);
-        diffuseColor.rgb = mix(shallowTurq, uDeepColor, (0.38 + depthWave * 0.36) * (1.0 - vShore * 0.55));
-        diffuseColor.rgb += vec3(0.88, 0.98, 1.0) * wLine * 0.36;
+        float wN = wNoise(wP * 0.48 + vec2(wT * 0.05, -wT * 0.09));
+        float depthWave = smoothstep(0.22, 0.8, wNoise(wP * 0.18));
+        float shallow = clamp(vShore * 0.85 + 0.16 + (1.0 - depthWave) * 0.22, 0.0, 1.0);
+        diffuseColor.rgb = mix(uDeepColor, uShallowColor, shallow);
+        float ripplePhase = dot(wP, vec2(1.25, 3.8)) - wT * 0.75 + wN * 4.0;
+        float ripple = pow(0.5 + 0.5 * sin(ripplePhase), 24.0);
+        ripple *= smoothstep(0.38, 0.72, wNoise(wP * vec2(1.2, 0.7) + vec2(-wT * 0.08, wT * 0.02)));
+        float rippleFilter = 1.0 - smoothstep(0.3, 1.4, fwidth(ripplePhase));
+        diffuseColor.rgb += vec3(0.009, 0.016, 0.014) * ripple * rippleFilter;
         if (vShore > 0.02) {
-          float lap = 0.5 + 0.5 * sin(wT * 2.5 - vShore * 5.2 + wN * 6.0);
-          float foam = smoothstep(0.32, 0.76, vShore * (0.72 + lap * 0.45));
-          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.95, 0.99, 1.0), foam * 0.88);
+          float lap = 0.5 + 0.5 * sin(wT * 1.3 - vShore * 9.0 + wN * 4.0);
+          float foam = smoothstep(0.48, 0.91, vShore) * (0.15 + lap * 0.12);
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.52, 0.61, 0.55), foam);
         }`
       )
       .replace(
-        '#include <emissivemap_fragment>',
-        `#include <emissivemap_fragment>
+        '#include <normal_fragment_maps>',
+        `#include <normal_fragment_maps>
         {
-          float s1 = wNoise(wP * 9.0 + vec2(wT * 0.90, wT * 0.58));
-          float s2 = wNoise(wP * 7.6 - vec2(wT * 0.62, -wT * 0.44));
-          float wSpark = smoothstep(0.962, 1.03, s1 * s2 * 1.24) * 0.85;
-          totalEmissiveRadiance += vec3(1.0, 0.95, 0.80) * wSpark * 2.6;
+          vec2 slope = vec2(1.6, 0.58) * cos(dot(wP, vec2(1.6, 0.58)) - wT * 0.8 + wN * 3.0) * 0.018
+                     + vec2(-0.85, 2.1) * cos(dot(wP, vec2(-0.85, 2.1)) + wT * 0.6 - wN * 2.0) * 0.012;
+          float detailPhase = dot(wP, vec2(5.2, -3.7)) - wT * 1.1;
+          slope += vec2(5.2, -3.7) * cos(detailPhase) * 0.007
+                 * (1.0 - smoothstep(0.4, 1.5, fwidth(detailPhase)));
+          vec3 waveNormal = normalize(vec3(-slope.x, 1.0, -slope.y));
+          normal = normalize((viewMatrix * vec4(waveNormal, 0.0)).xyz);
         }`
       );
   };
@@ -620,122 +667,32 @@ export function applyStylizedWaterShader(mat) {
 
 // My Civilization's Billowy Sea-of-Clouds Framing Border & Non-Overlapping Outer Azure Ocean!
 export function createDioramaCloudSeaAndOcean(scene, mapW, mapH) {
-  // 1. 4-piece collar ocean strictly OUTSIDE the island bounds (zero overlap beneath island riverbeds!)
+  // 4-piece collar East China Sea strictly OUTSIDE map bounds (natural slate-jade sea, no toy cotton-ball clouds!)
   const oceanMat = new THREE.MeshStandardMaterial({
-    color: '#3ba2c8',
-    roughness: 0.34,
-    metalness: 0.08,
+    color: '#2b474d',
+    roughness: DIORAMA_LOOK.water.roughness,
+    envMapIntensity: DIORAMA_LOOK.water.environment,
+    metalness: 0.0,
   });
   applyStylizedWaterShader(oceanMat);
 
-  const hw = mapW / 2 + 0.35; // 0.35m clearance gap so outer ocean NEVER touches cliff skirt!
-  const hh = mapH / 2 + 0.35;
-  const pad = 90;
+  const hw = mapW / 2 + 0.25;
+  const hh = mapH / 2 + 0.25;
+  const pad = 110;
   const oceanStrips = [
     [0, -(hh + pad / 2), mapW + pad * 2, pad],
     [0, hh + pad / 2, mapW + pad * 2, pad],
-    [-(hw + pad / 2), 0, pad, mapH + 0.7],
-    [hw + pad / 2, 0, pad, mapH + 0.7],
+    [-(hw + pad / 2), 0, pad, mapH + 0.5],
+    [hw + pad / 2, 0, pad, mapH + 0.5],
   ];
   oceanStrips.forEach(([ox, oz, w, h]) => {
     const g = new THREE.PlaneGeometry(w, h);
     g.rotateX(-Math.PI / 2);
+    g.setAttribute('aShore', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count), 1));
     const m = new THREE.Mesh(g, oceanMat);
     m.position.set(ox, -0.34, oz);
     m.receiveShadow = true;
     m.userData.noOutline = true;
     scene.add(m);
   });
-
-  // 2. Billowy breathing white-cream cloud clusters framing map edges (just like My Civilization!)
-  const parts = [];
-  const addPuff = (x, y, z, r) => {
-    const g = new THREE.IcosahedronGeometry(r, 1);
-    g.scale(1, 0.72, 1);
-    g.translate(x, y, z);
-    parts.push(g);
-  };
-  addPuff(0, 0.45, 0, 1.85);
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * Math.PI * 2;
-    addPuff(Math.cos(a) * 1.85, 0.30, Math.sin(a) * 1.85, 1.25);
-  }
-  const nonIdx = mergeGeometries(parts, false);
-  parts.forEach((p) => p.dispose());
-  nonIdx.deleteAttribute('normal');
-  nonIdx.deleteAttribute('uv');
-  const cloudGeo = mergeVertices(nonIdx, 1e-4);
-  nonIdx.dispose();
-
-  const pos = cloudGeo.getAttribute('position');
-  const cols = new Float32Array(pos.count * 3);
-  const topC = new THREE.Color('#dde8f4');
-  const botC = new THREE.Color('#9ab2cc');
-  const tmp = new THREE.Color();
-  for (let i = 0; i < pos.count; i++) {
-    const t = THREE.MathUtils.clamp((pos.getY(i) + 0.2) / 1.4, 0, 1);
-    tmp.copy(botC).lerp(topC, t * t * (3 - 2 * t));
-    cols[i * 3] = tmp.r;
-    cols[i * 3 + 1] = tmp.g;
-    cols[i * 3 + 2] = tmp.b;
-  }
-  cloudGeo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
-  cloudGeo.computeVertexNormals();
-
-  const cloudMat = new THREE.MeshStandardMaterial({
-    color: '#ccdbee',
-    vertexColors: true,
-    roughness: 0.96,
-    metalness: 0.0,
-    flatShading: true,
-  });
-  cloudMat.onBeforeCompile = (shader) => {
-    shader.uniforms.uCloudTime = atmosphereTime;
-    shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nuniform float uCloudTime;')
-      .replace(
-        '#include <begin_vertex>',
-        `#include <begin_vertex>
-        #ifdef USE_INSTANCING
-          vec2 cIp = vec2(instanceMatrix[3][0], instanceMatrix[3][2]);
-        #else
-          vec2 cIp = vec2(0.0);
-        #endif
-        float cPh = cIp.x * 0.43 + cIp.y * 0.71;
-        float cBreath = sin(uCloudTime * 0.55 + cPh);
-        transformed.xz *= 1.0 + cBreath * 0.035;
-        transformed.y *= 1.0 + cBreath * 0.055;
-        transformed.y += sin(uCloudTime * 0.75 + cPh) * 0.05;`
-      );
-  };
-
-  // Push cloud border +7.8m outside map cliffs so clouds frame outer ocean without intruding on Keep view!
-  const cloudPositions = [];
-  const halfW = mapW / 2 + 7.8;
-  const halfH = mapH / 2 + 7.0;
-  for (let x = -halfW - 6; x <= halfW + 6; x += 4.2) {
-    cloudPositions.push([x, 0.35, -halfH - 1.5, 1.15]);
-    cloudPositions.push([x + 1.8, 0.65, -halfH - 4.8, 1.35]);
-    cloudPositions.push([x, 0.25, halfH + 1.5, 1.15]);
-    cloudPositions.push([x - 1.6, 0.55, halfH + 4.8, 1.35]);
-  }
-  for (let z = -halfH; z <= halfH; z += 4.2) {
-    cloudPositions.push([-halfW - 1.6, 0.45, z, 1.2]);
-    cloudPositions.push([-halfW - 5.0, 0.75, z + 1.5, 1.4]);
-    cloudPositions.push([halfW + 1.6, 0.45, z, 1.2]);
-    cloudPositions.push([halfW + 5.0, 0.75, z - 1.5, 1.4]);
-  }
-
-  const cloudInst = new THREE.InstancedMesh(cloudGeo, cloudMat, cloudPositions.length);
-  const dummy = new THREE.Object3D();
-  cloudPositions.forEach(([cx, cy, cz, sc], idx) => {
-    dummy.position.set(cx, cy, cz);
-    dummy.rotation.y = idx * 1.1;
-    dummy.scale.setScalar(sc);
-    dummy.updateMatrix();
-    cloudInst.setMatrixAt(idx, dummy.matrix);
-  });
-  cloudInst.instanceMatrix.needsUpdate = true;
-  cloudInst.userData.outlineDepthMask = true; // Never draw dark outlines on soft clouds!
-  scene.add(cloudInst);
 }

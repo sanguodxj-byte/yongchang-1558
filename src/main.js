@@ -4,6 +4,7 @@ import { sfx } from './audio.js';
 import { createVoxelMaterials } from './voxelTextures.js';
 import { voxelShaderTime } from './voxelEngine.js';
 import { DioramaPostFx, atmosphereTime } from './dioramaRenderer.js';
+import { DIORAMA_LOOK } from './renderStyle.js';
 import { generateAll3DIcons } from './iconStudio.js';
 import {
   createVoxelHumanoid,
@@ -101,16 +102,25 @@ class VoxelStrongholdGame {
     this.renderer.toneMappingExposure = 1.06;
 
     this.scene = new THREE.Scene();
-    this.dayHorizon = new THREE.Color('#2a7aa3');
-    this.nightHorizon = new THREE.Color('#182a46');
+    this.dayHorizon = new THREE.Color(DIORAMA_LOOK.day.horizon);
+    this.nightHorizon = new THREE.Color(DIORAMA_LOOK.night.horizon);
     this.scene.background = this.dayHorizon.clone();
-    this.scene.fog = new THREE.Fog('#3889b0', 68, 128);
+    this.scene.fog = new THREE.Fog(this.dayHorizon, DIORAMA_LOOK.day.fogNear, DIORAMA_LOOK.day.fogFar);
+    this.atmosphereColors = {};
+    for (const phase of ['day', 'night']) {
+      const style = DIORAMA_LOOK[phase];
+      this.atmosphereColors[phase] = {
+        key: new THREE.Color(style.keyColor), sky: new THREE.Color(style.skyColor),
+        ground: new THREE.Color(style.groundColor),
+        shadow: new THREE.Vector3(...style.shadowTint), highlight: new THREE.Vector3(...style.highlightTint),
+      };
+    }
 
     // Studio PMREM sky sheen (exact match to My Civilization scene.ts!)
     const pmrem = new THREE.PMREMGenerator(this.renderer);
     const roomEnv = new RoomEnvironment();
     this.scene.environment = pmrem.fromScene(roomEnv, 0.04).texture;
-    this.scene.environmentIntensity = 0.32;
+    this.scene.environmentIntensity = DIORAMA_LOOK.day.environment;
     roomEnv.dispose();
     pmrem.dispose();
 
@@ -131,23 +141,27 @@ class VoxelStrongholdGame {
     this.camDesiredYaw = this.camYaw;
 
     // Calibrated 3/4 Golden-Hour Diorama Key-to-Fill Lighting Rig (opengame-lighting: crisp sunlit vs cool sky shade!)
-    this.ambientLight = new THREE.AmbientLight('#fff4e3', 0.13);
-    this.hemiLight = new THREE.HemisphereLight('#cfeaff', '#5d7a49', 0.46);
-    this.sunLight = new THREE.DirectionalLight('#fff0d2', 1.82);
+    this.ambientLight = new THREE.AmbientLight('#fff4e3', DIORAMA_LOOK.day.ambient);
+    this.hemiLight = new THREE.HemisphereLight(DIORAMA_LOOK.day.skyColor, DIORAMA_LOOK.day.groundColor, DIORAMA_LOOK.day.hemisphere);
+    this.sunLight = new THREE.DirectionalLight(DIORAMA_LOOK.day.keyColor, DIORAMA_LOOK.day.key);
     this.sunLight.castShadow = true;
-    this.sunLight.shadow.mapSize.set(2048, 2048);
-    this.sunLight.shadow.radius = 2.8;
+    this.sunLight.shadow.mapSize.setScalar(DIORAMA_LOOK.shadow.mapSize);
+    this.sunLight.shadow.radius = DIORAMA_LOOK.shadow.radius;
     this.sunLight.shadow.camera.near = 2;
     this.sunLight.shadow.camera.far = 98;
-    const d = 26;
+    const d = DIORAMA_LOOK.shadow.extent;
     this.sunLight.shadow.camera.left = -d;
     this.sunLight.shadow.camera.right = d;
     this.sunLight.shadow.camera.top = d;
     this.sunLight.shadow.camera.bottom = -d;
-    this.sunLight.shadow.bias = -0.0005;
-    this.sunLight.shadow.normalBias = 0.046;
+    this.sunLight.shadow.bias = DIORAMA_LOOK.shadow.bias;
+    this.sunLight.shadow.normalBias = DIORAMA_LOOK.shadow.normalBias;
+    this.sunOffset = new THREE.Vector3(25, 29, 11);
+    this.shadowRight = new THREE.Vector3(11, 0, -25).normalize();
+    this.shadowUp = this.sunOffset.clone().normalize().cross(this.shadowRight).normalize();
+    this.shadowAnchor = new THREE.Vector3();
 
-    this.rimLight = new THREE.DirectionalLight('#bde0ff', 0.55);
+    this.rimLight = new THREE.DirectionalLight('#bde0ff', DIORAMA_LOOK.day.rim);
     this.rimLight.position.set(16, 18, -18);
 
     this.scene.add(this.ambientLight, this.hemiLight, this.sunLight, this.sunLight.target, this.rimLight);
@@ -400,12 +414,12 @@ class VoxelStrongholdGame {
   initDioramaAmbientLife() {
     // 1. Soft Billowy Chimney Smoke & Campfire Rising Embers Pool!
     this.smokeParticles = [];
-    const smokeGeo = new THREE.BoxGeometry(1, 1, 1);
+    const smokeGeo = new THREE.IcosahedronGeometry(0.52, 1);
     const smokeMat = new THREE.MeshStandardMaterial({
-      color: 0xf8fafc,
-      roughness: 0.95,
+      color: 0xeae4d8,
+      roughness: 0.96,
       transparent: true,
-      opacity: 0.55,
+      opacity: 0.30,
       depthWrite: false,
     });
     const emberMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 1.5, 0.35) });
@@ -919,50 +933,72 @@ class VoxelStrongholdGame {
   }
 
   tryAssignArchersToWalls(squad, nearWorldX = null, nearWorldZ = null) {
-    const cx = nearWorldX !== null ? nearWorldX : squad.targetX;
-    const cz = nearWorldZ !== null ? nearWorldZ : squad.targetZ;
+    const isManualOrder = nearWorldX !== null;
+    const cx = isManualOrder ? nearWorldX : squad.targetX;
+    const cz = isManualOrder ? nearWorldZ : squad.targetZ;
+    const snapRadius = isManualOrder ? 2.45 : 10.5;
 
     const candidates = this.world.structures
-      .filter((s) => s.team === squad.team && (s.type === 'tower' || s.type === 'wall') && s.garrison.length < s.maxGarrison)
+      .filter((s) => s.team === squad.team && s.hp > 0 && (s.type === 'tower' || s.type === 'wall') && s.garrison.length < s.maxGarrison)
       .sort((a, b) => {
-        const scoreA = Math.hypot(a.x - cx, a.z - cz) - (a.type === 'tower' ? 4.0 : 0);
-        const scoreB = Math.hypot(b.x - cx, b.z - cz) - (b.type === 'tower' ? 4.0 : 0);
+        const scoreA = Math.hypot(a.x - cx, a.z - cz) - (a.type === 'tower' && !isManualOrder ? 3.2 : 0);
+        const scoreB = Math.hypot(b.x - cx, b.z - cz) - (b.type === 'tower' && !isManualOrder ? 3.2 : 0);
         return scoreA - scoreB;
       });
 
-      squad.members.forEach((u) => {
+    squad.members.forEach((u) => {
       if (u.hp <= 0) return;
       const oldWall = u.garrisonWall || u.pendingGarrisonWall;
+      const wasMounted = Boolean(u.garrisonWall);
       if (oldWall) {
         const idx = oldWall.garrison.indexOf(u);
         if (idx !== -1) oldWall.garrison.splice(idx, 1);
         u.garrisonWall = null;
         u.pendingGarrisonWall = null;
       }
+
+      let assigned = false;
       for (const wall of candidates) {
-        if (wall.garrison.length < wall.maxGarrison && Math.hypot(wall.x - cx, wall.z - cz) < 14) {
+        if (wall.garrison.length < wall.maxGarrison && Math.hypot(wall.x - cx, wall.z - cz) <= snapRadius) {
           wall.garrison.push(u);
           const slotIdx = wall.garrison.length - 1;
           u.slotOffset = wall.type === 'wall'
             ? { ox: 0, oz: 0 }
             : {
-                ox: ((slotIdx % 2) - 0.5) * 0.36,
-                oz: ((Math.floor(slotIdx / 2) % 2) - 0.5) * 0.36,
+                ox: ((slotIdx % 2) - 0.5) * 0.28,
+                oz: ((Math.floor(slotIdx / 2) % 2) - 0.5) * 0.28,
               };
-          // Pre-spawned enemy castle guards or archers already beside the wall mount immediately;
-          // otherwise archers pathfind on the ground via A* to the wall base before climbing!
           if (squad.team === 'enemy' || Math.hypot(wall.x - u.x, wall.z - u.z) <= 1.38) {
             u.garrisonWall = wall;
             u.pendingGarrisonWall = null;
           } else {
+            if (wasMounted && oldWall) {
+              const dismount = this.world.findClearApronPoint(oldWall, this.getEntityRadius(u), cx, cz);
+              u.x = dismount.x;
+              u.z = dismount.z;
+              u.y = this.world.getElevationAtWorld(u.x, u.z, this.getEntityRadius(u));
+            }
             u.pendingGarrisonWall = wall;
             u.garrisonWall = null;
             u.waypoints = null;
           }
           squad.targetX = wall.x;
           squad.targetZ = wall.z;
+          assigned = true;
           break;
         }
+      }
+
+      // Cleanly dismount onto ground apron if player dragged wall-mounted musketeers onto open ground!
+      if (!assigned && wasMounted && oldWall) {
+        const rU = this.getEntityRadius(u);
+        const dismount = this.world.findClearApronPoint(oldWall, rU, cx, cz);
+        u.x = dismount.x;
+        u.z = dismount.z;
+        this.world.projectOutOfObstacles(u, rU, u.team);
+        u.y = this.world.getElevationAtWorld(u.x, u.z, rU);
+        u.mesh.position.set(u.x, u.y, u.z);
+        u.waypoints = null;
       }
     });
   }
@@ -1593,6 +1629,9 @@ class VoxelStrongholdGame {
         ud.oxLegs.forEach((l, idx) => {
           l.rotation.x = Math.sin(ent.animPhase + (idx % 2) * Math.PI) * 0.5;
         });
+        if (ud.wheels) {
+          ud.wheels.forEach((wh) => { wh.rotation.x += step / 0.15; });
+        }
       }
     }
     return false;
@@ -1627,18 +1666,34 @@ class VoxelStrongholdGame {
     }
   }
 
+  updateAtmosphere(dt) {
+    const phase = this.isNight ? 'night' : 'day';
+    const style = DIORAMA_LOOK[phase];
+    const colors = this.atmosphereColors[phase];
+    const blend = 1 - Math.exp(-dt * 1.4);
+    const targetHorizon = this.isNight ? this.nightHorizon : this.dayHorizon;
+    this.scene.background.lerp(targetHorizon, blend);
+    this.scene.fog.color.copy(this.scene.background);
+    this.scene.fog.near = THREE.MathUtils.lerp(this.scene.fog.near, style.fogNear, blend);
+    this.scene.fog.far = THREE.MathUtils.lerp(this.scene.fog.far, style.fogFar, blend);
+    this.scene.environmentIntensity = THREE.MathUtils.lerp(this.scene.environmentIntensity, style.environment, blend);
+    this.sunLight.intensity = THREE.MathUtils.lerp(this.sunLight.intensity, style.key, blend);
+    this.hemiLight.intensity = THREE.MathUtils.lerp(this.hemiLight.intensity, style.hemisphere, blend);
+    this.ambientLight.intensity = THREE.MathUtils.lerp(this.ambientLight.intensity, style.ambient, blend);
+    this.rimLight.intensity = THREE.MathUtils.lerp(this.rimLight.intensity, style.rim, blend);
+    this.sunLight.color.lerp(colors.key, blend);
+    this.hemiLight.color.lerp(colors.sky, blend);
+    this.hemiLight.groundColor.lerp(colors.ground, blend);
+    const uniforms = this.postFx.finalPass.uniforms;
+    uniforms.uExposure.value = THREE.MathUtils.lerp(uniforms.uExposure.value, style.exposure, blend);
+    uniforms.uSaturation.value = THREE.MathUtils.lerp(uniforms.uSaturation.value, style.saturation, blend);
+    uniforms.uContrast.value = THREE.MathUtils.lerp(uniforms.uContrast.value, style.contrast, blend);
+    uniforms.uShadowTint.value.lerp(colors.shadow, blend);
+    uniforms.uHighlightTint.value.lerp(colors.highlight, blend);
+  }
+
   updateWaveCycle(dt) {
     this.phaseTimer -= dt;
-
-    // Smooth day/night atmospheric grade & lighting transition!
-    const targetHorizon = this.isNight ? this.nightHorizon : this.dayHorizon;
-    this.scene.background.lerp(targetHorizon, dt * 1.8);
-    this.scene.fog.color.copy(this.scene.background);
-
-    this.hemiLight.intensity = THREE.MathUtils.lerp(this.hemiLight.intensity, this.isNight ? 0.28 : 0.46, dt * 2);
-    this.sunLight.intensity = THREE.MathUtils.lerp(this.sunLight.intensity, this.isNight ? 1.12 : 1.82, dt * 2);
-    this.sunLight.color.lerp(new THREE.Color(this.isNight ? 0x8bb6ff : 0xfff0d2), dt * 2);
-
     if (this.phaseTimer <= 0) {
       if (!this.isNight) {
         this.triggerNightSiege();
@@ -1703,10 +1758,10 @@ class VoxelStrongholdGame {
     const paddyBoost = this.fortressPaddyUnlocked ? 1.15 : 1.0;
     const moraleMult = (this.taxPolicy === 'generous' ? 1.2 : (this.taxPolicy === 'harsh' ? 0.92 : 1.0)) * paddyBoost;
 
-    // 1. Update Portcullis Gates (opens for friendly troops AND gatherer workers/ox-carts!) & Ballistas
+    // 1. Update Swinging Double Gate Doors (opens for friendly troops & ox-carts, never pokes through roof!) & Folangji Cannons
     for (const s of this.world.structures) {
       if (s.hp <= 0) continue;
-      if (s.type === 'gate' && s.gateLeaf) {
+      if (s.type === 'gate' && (s.gateLeafL || s.gateLeaf)) {
         let friendlyNear = false;
         let enemyNear = false;
         for (const u of this.units) {
@@ -1726,25 +1781,35 @@ class VoxelStrongholdGame {
           }
         }
         s.isOpen = friendlyNear && !enemyNear;
-        const targetY = s.isOpen ? 1.38 : 0.0;
-        s.gateLeaf.position.y = THREE.MathUtils.lerp(s.gateLeaf.position.y, targetY, Math.min(1, dt * 12));
+        if (s.gateLeafL && s.gateLeafR) {
+          const targetAng = s.isOpen ? 1.46 : 0.0;
+          s.gateLeafL.rotation.y = THREE.MathUtils.lerp(s.gateLeafL.rotation.y, targetAng, Math.min(1, dt * 10));
+          s.gateLeafR.rotation.y = THREE.MathUtils.lerp(s.gateLeafR.rotation.y, -targetAng, Math.min(1, dt * 10));
+        } else if (s.gateLeaf) {
+          s.gateLeaf.position.y = THREE.MathUtils.lerp(s.gateLeaf.position.y, s.isOpen ? 1.38 : 0.0, Math.min(1, dt * 12));
+        }
       } else if (s.type === 'ballista') {
         s.shootCooldown -= dt;
         if (s.shootCooldown <= 0) {
           const elevBonus = Math.max(0, s.y) * 1.5;
-          const target = this.findNearestEnemyUnit(s.x, s.z, s.team, 13.0 + elevBonus, true);
+          const target = this.findNearestEnemyUnit(s.x, s.z, s.team, 14.0 + elevBonus, true)
+            || this.findEnemyCastleTarget(s.x, s.z, s.team, 14.0 + elevBonus);
           if (target) {
-            s.shootCooldown = 1.6;
+            s.shootCooldown = 1.85;
+            const aimWorldYaw = Math.atan2(target.x - s.x, target.z - s.z);
             if (s.mesh.userData.turretGroup) {
-              s.mesh.userData.turretGroup.rotation.y =
-                Math.atan2(target.x - s.x, target.z - s.z) - (s.mesh.rotation.y || 0);
+              s.mesh.userData.turretGroup.rotation.y = aimWorldYaw - (s.mesh.rotation.y || 0);
             }
+            const muzzX = s.x + Math.sin(aimWorldYaw) * 0.55;
+            const muzzZ = s.z + Math.cos(aimWorldYaw) * 0.55;
+            this.debris.burst(muzzX, s.y + 2.20, muzzZ, 0xff8811, 5, 0.55, 0.12);
             this.spawnProjectile({
-              fromX: s.x, fromY: s.y + 2.45, fromZ: s.z,
-              toX: target.x, toY: target.y + 0.5, toZ: target.z,
-              team: s.team, dmg: 55, siegeDmg: 48, kind: 'bolt',
+              fromX: muzzX, fromY: s.y + 2.20, fromZ: muzzZ,
+              toX: target.x, toY: (target.y || 0) + (target.height ? target.height * 0.5 : 0.48), toZ: target.z,
+              team: s.team, dmg: 68, siegeDmg: 75, kind: 'cannonball',
+              targetStruct: target.cells ? target : null,
             });
-            sfx.playArrow(false);
+            sfx.playExplosion();
           }
         }
       }
@@ -1984,37 +2049,52 @@ class VoxelStrongholdGame {
         continue;
       }
 
-      // Ranged & Trebuchet Siege Targeting
+      // Ranged Musketeers / Archers & Heavy Siege Artillery Targeting
       if (u.isRanged) {
         const heightAdv = Math.max(0, u.y) * 1.1;
         const effRange = u.range + heightAdv;
-        const structTarget = u.role === 'trebuchet'
-          ? this.findEnemyCastleTarget(u.x, u.z, u.team, effRange)
-          : null;
-        const unitTarget = u.role === 'trebuchet' && structTarget
-          ? null
-          : this.findNearestEnemyUnit(u.x, u.z, u.team, effRange);
+        let chosen = null;
+        if (u.role === 'trebuchet') {
+          chosen = this.findEnemyCastleTarget(u.x, u.z, u.team, effRange)
+            || this.findNearestEnemyUnit(u.x, u.z, u.team, effRange, true);
+        } else {
+          chosen = this.findNearestEnemyUnit(u.x, u.z, u.team, effRange)
+            || this.findEnemyCastleTarget(u.x, u.z, u.team, effRange);
+        }
 
-        const chosen = structTarget || unitTarget;
         if (chosen) {
           const aimYaw = Math.atan2(chosen.x - u.x, chosen.z - u.z);
           u.mesh.rotation.y = lerpAngle(u.mesh.rotation.y, aimYaw, Math.min(1, dt * 10));
           if (u.atkTimer <= 0) {
             u.atkTimer = u.cooldown;
-            u.swingTimer = 0.45;
+            u.swingTimer = 0.40;
             const dmgMult = u.team === 'player' ? moraleMult : 1.0;
-            const targetY = chosen.height ? (chosen.y || 0) + chosen.height * 0.6 : (chosen.y || 0) + 0.4;
+            const isStruct = Boolean(chosen.cells);
+            const targetY = isStruct ? (chosen.y || 0) + (chosen.height || 1.5) * 0.55 : (chosen.y || 0) + 0.52;
+            const isPlayerGun = u.team === 'player' && u.role === 'archer';
+            if (u.role === 'trebuchet' || isPlayerGun) {
+              this.debris.burst(
+                u.x + Math.sin(aimYaw) * 0.45,
+                u.y + (u.isSiege ? 0.65 : 0.62),
+                u.z + Math.cos(aimYaw) * 0.45,
+                u.role === 'trebuchet' ? 0xff8811 : 0xe2e8f0,
+                u.role === 'trebuchet' ? 6 : 2,
+                0.45,
+                0.08
+              );
+            }
             this.spawnProjectile({
-              fromX: u.x, fromY: u.y + (u.isSiege ? 1.85 : 0.75), fromZ: u.z,
-              toX: chosen.x + (Math.random() - 0.5) * 0.35,
+              fromX: u.x, fromY: u.y + (u.isSiege ? 0.72 : 0.66), fromZ: u.z,
+              toX: chosen.x + (Math.random() - 0.5) * 0.28,
               toY: targetY,
-              toZ: chosen.z + (Math.random() - 0.5) * 0.35,
+              toZ: chosen.z + (Math.random() - 0.5) * 0.28,
               team: u.team,
               dmg: u.dmg * dmgMult,
               siegeDmg: u.siegeDmg * dmgMult,
-              kind: u.role === 'trebuchet' ? 'boulder' : 'arrow',
+              kind: u.role === 'trebuchet' ? 'boulder' : (isPlayerGun ? 'bullet' : 'arrow'),
+              targetStruct: isStruct ? chosen : null,
             });
-            if (u.role === 'trebuchet') sfx.playPlaceBlock('wood');
+            if (u.role === 'trebuchet') sfx.playExplosion();
             else sfx.playArrow(false);
           }
           u.noProgressTime = 0;
@@ -2381,13 +2461,19 @@ class VoxelStrongholdGame {
         });
       }
     } else if (ud.armPivot) {
+      if (moving && ud.wheels) {
+        ud.wheels.forEach((wh) => { wh.rotation.x += (u.speed * dt) / 0.19; });
+      }
       if (u.swingTimer > 0) {
         u.swingTimer -= dt;
-        ud.armPivot.rotation.x = THREE.MathUtils.lerp(0.95, -0.35, 1 - u.swingTimer / 0.45);
+        ud.armPivot.rotation.x = THREE.MathUtils.lerp(-0.38, -0.18, 1 - u.swingTimer / 0.40);
       } else {
-        ud.armPivot.rotation.x = THREE.MathUtils.lerp(ud.armPivot.rotation.x, -0.35, dt * 3);
+        ud.armPivot.rotation.x = THREE.MathUtils.lerp(ud.armPivot.rotation.x, -0.20, dt * 4);
       }
     } else if (ud.ramLog) {
+      if (moving && ud.wheels) {
+        ud.wheels.forEach((wh) => { wh.rotation.x += (u.speed * dt) / 0.17; });
+      }
       if (u.swingTimer > 0) {
         u.swingTimer -= dt;
         ud.ramLog.position.z = Math.sin((u.swingTimer / 0.32) * Math.PI) * 0.44;
@@ -2440,18 +2526,33 @@ class VoxelStrongholdGame {
   }
 
   spawnProjectile(cfg) {
-    const geo = new THREE.BoxGeometry(1, 1, 1);
+    if (!this._projGeos) {
+      this._projGeos = {
+        sphere: new THREE.IcosahedronGeometry(0.5, 1),
+        shaft: new THREE.BoxGeometry(1, 1, 1),
+      };
+    }
+    let geo = this._projGeos.shaft;
     let mat = this.mats.timberDark;
-    let scale = [0.08, 0.08, 0.44];
+    let scale = [0.045, 0.045, 0.42];
     if (cfg.kind === 'fire_arrow') {
       mat = this.mats.fireCore;
-      scale = [0.12, 0.12, 0.50];
+      scale = [0.08, 0.08, 0.46];
+    } else if (cfg.kind === 'bullet') {
+      geo = this._projGeos.sphere;
+      mat = this.mats.steelBright;
+      scale = [0.11, 0.11, 0.22];
+    } else if (cfg.kind === 'cannonball') {
+      geo = this._projGeos.sphere;
+      mat = this.mats.ironDark;
+      scale = [0.24, 0.24, 0.24];
     } else if (cfg.kind === 'boulder') {
+      geo = this._projGeos.sphere;
       mat = this.mats.fireMid;
-      scale = [0.46, 0.46, 0.46];
+      scale = [0.34, 0.34, 0.34];
     } else if (cfg.kind === 'bolt') {
       mat = this.mats.steelBright;
-      scale = [0.12, 0.12, 0.60];
+      scale = [0.08, 0.08, 0.50];
     }
     const mesh = new THREE.Mesh(geo, mat);
     mesh.scale.set(...scale);
@@ -2459,9 +2560,13 @@ class VoxelStrongholdGame {
     this.scene.add(mesh);
 
     const dist = Math.hypot(cfg.toX - cfg.fromX, cfg.toZ - cfg.fromZ);
-    const speed = cfg.kind === 'boulder' ? 10.2 : (cfg.kind === 'bolt' ? 19 : 14.5);
-    const duration = Math.max(0.18, dist / speed);
-    const arcHeight = cfg.kind === 'boulder' ? Math.max(2.8, dist * 0.32) : (cfg.kind === 'bolt' ? 0.35 : Math.max(0.95, dist * 0.16));
+    const speed = cfg.kind === 'bullet' ? 25.0
+      : (cfg.kind === 'cannonball' ? 21.0 : (cfg.kind === 'boulder' ? 12.5 : (cfg.kind === 'bolt' ? 19 : 15.0)));
+    const duration = Math.max(0.12, dist / speed);
+    const arcHeight = cfg.kind === 'bullet' ? Math.min(0.18, dist * 0.02)
+      : (cfg.kind === 'cannonball' ? Math.max(0.28, dist * 0.05)
+      : (cfg.kind === 'boulder' ? Math.max(1.9, dist * 0.22)
+      : (cfg.kind === 'bolt' ? 0.32 : Math.max(0.75, dist * 0.14))));
 
     this.projectiles.push({ ...cfg, mesh, elapsed: 0, duration, arcHeight });
   }
@@ -2490,7 +2595,7 @@ class VoxelStrongholdGame {
   onProjectileImpact(p) {
     const g = worldToGrid(p.toX, p.toZ);
 
-    if (p.kind === 'fire_arrow' || p.kind === 'boulder') {
+    if (p.kind === 'fire_arrow' || p.kind === 'boulder' || p.kind === 'cannonball') {
       let ignited = false;
       for (let dx = -1; dx <= 1; dx++) {
         for (let dz = -1; dz <= 1; dz++) {
@@ -2500,31 +2605,37 @@ class VoxelStrongholdGame {
       if (ignited) sfx.playFireIgnite();
     }
 
-    if (p.kind === 'boulder') {
-      sfx.playExplosion();
-      this.camShake = Math.min(0.28, (this.camShake || 0) + 0.16);
-      this.debris.burst(p.toX, p.toY + 0.3, p.toZ, 0xff7700, 18, 1.4, 0.26);
+    if (p.kind === 'boulder' || p.kind === 'cannonball') {
+      const splashR = p.kind === 'boulder' ? 1.85 : 1.25;
+      if (p.kind === 'boulder') {
+        sfx.playExplosion();
+        this.camShake = Math.min(0.24, (this.camShake || 0) + 0.12);
+      }
+      this.debris.burst(p.toX, p.toY + 0.25, p.toZ, 0xff7700, p.kind === 'boulder' ? 16 : 9, 1.15, 0.20);
 
       for (let sIdx = this.world.structures.length - 1; sIdx >= 0; sIdx--) {
         const s = this.world.structures[sIdx];
         if (s.team === p.team || s.hp <= 0) continue;
-        if (Math.hypot(s.x - p.toX, s.z - p.toZ) < 1.75) {
+        if (Math.hypot(s.x - p.toX, s.z - p.toZ) < splashR) {
           this.world.damageStructure(s, p.siegeDmg);
         }
       }
       for (const u of this.units) {
         if (u.team === p.team || u.hp <= 0 || u.garrisonBuilding) continue;
-        if (Math.hypot(u.x - p.toX, u.z - p.toZ) < 1.95) {
+        if (Math.hypot(u.x - p.toX, u.z - p.toZ) < splashR + 0.15) {
           u.hp -= p.dmg;
         }
       }
     } else {
-      const victim = this.findNearestEnemyUnit(p.toX, p.toZ, p.team, 1.2);
+      const victim = this.findNearestEnemyUnit(p.toX, p.toZ, p.team, 1.25);
       if (victim) {
         let finalDmg = p.dmg;
         if (victim.garrisonWall) finalDmg *= 0.55;
-        if (victim.arrowResist) finalDmg *= (1 - victim.arrowResist);
+        if (victim.arrowResist && p.kind !== 'bullet') finalDmg *= (1 - victim.arrowResist);
+        else if (victim.arrowResist && p.kind === 'bullet') finalDmg *= (1 - victim.arrowResist * 0.45);
         victim.hp -= finalDmg;
+      } else if (p.targetStruct && p.targetStruct.hp > 0 && p.targetStruct.team !== p.team) {
+        this.world.damageStructure(p.targetStruct, p.siegeDmg || 6);
       }
     }
   }
@@ -2713,8 +2824,8 @@ class VoxelStrongholdGame {
     const stampArmy = document.getElementById('stamp-army');
     const stampBuildImg = document.getElementById('stamp-build-img');
     const stampArmyImg = document.getElementById('stamp-army-img');
-    if (stampBuildImg && this.icons?.buildings?.tower) {
-      stampBuildImg.src = this.icons.buildings.tower;
+    if (stampBuildImg && this.icons?.buildings?.gate) {
+      stampBuildImg.src = this.icons.buildings.gate;
     }
     if (stampArmyImg && this.icons?.units?.knight) {
       stampArmyImg.src = this.icons.units.knight;
@@ -2761,9 +2872,9 @@ class VoxelStrongholdGame {
     const stanceIco = document.getElementById('stance-ico');
     const stanceLbl = document.getElementById('stance-lbl');
     const stanceSvgs = {
-      defend: `<svg class="hud-svg" viewBox="0 0 28 28"><path d="M14 2L4 6.5v7c0 6.5 4.3 10.8 10 12.5 5.7-1.7 10-6 10-12.5v-7L14 2z" fill="#eff6ff" stroke="#172554" stroke-width="2.4"/><path d="M14 5.5v17M7.5 12.5h13" stroke="#dc2626" stroke-width="3.2" stroke-linecap="round"/></svg>`,
-      sally: `<svg class="hud-svg" viewBox="0 0 28 28"><path d="M5 22L22 5m-3 0h3v3M23 22L6 5m3 0H6v3" stroke="#fef3c7" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 23l3-3M24 23l-3-3" stroke="#92400e" stroke-width="3.6" stroke-linecap="round"/></svg>`,
-      attack: `<svg class="hud-svg" viewBox="0 0 28 28"><path d="M4 17c5 0 11-3 16-9l4 4c-6 5-9 11-9 12-3-2-7-4-11-4v-3z" fill="#fde047" stroke="#450a0a" stroke-width="2.3" stroke-linejoin="round"/><circle cx="21" cy="9" r="2.2" fill="#fef08a"/></svg>`,
+      defend: `<svg class="hud-svg" viewBox="0 0 28 28"><circle cx="14" cy="14" r="10.5" fill="#9c7234" stroke="#2e1d0c" stroke-width="2.2"/><circle cx="14" cy="14" r="6.8" fill="none" stroke="#e2b96b" stroke-width="1.8"/><circle cx="14" cy="14" r="2.8" fill="#8f241e"/></svg>`,
+      sally: `<svg class="hud-svg" viewBox="0 0 28 28"><path d="M5 22L22 5m-3 0h3v3M23 22L6 5m3 0H6v3" stroke="#f4ebd9" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 23l3-3M24 23l-3-3" stroke="#a8864c" stroke-width="3.2" stroke-linecap="round"/></svg>`,
+      attack: `<svg class="hud-svg" viewBox="0 0 28 28"><path d="M4 17c5 0 11-3 16-9l4 4c-6 5-9 11-9 12-3-2-7-4-11-4v-3z" fill="#e2b96b" stroke="#3b150e" stroke-width="2.2" stroke-linejoin="round"/><circle cx="21" cy="9" r="2.2" fill="#fff0b8"/></svg>`,
     };
     stanceWheel.addEventListener('click', () => {
       const order = ['defend', 'sally', 'attack'];
@@ -3269,9 +3380,11 @@ class VoxelStrongholdGame {
     this.world.showBiomeHints(id);
     if (id) {
       this.updateBuildFloatingBar();
-      const cg = worldToGrid(this.camDesiredTarget.x, this.camDesiredTarget.z);
-      this.lastHoverCoords = [cg];
-      this.world.showBuildGhost(id, this.lastHoverCoords, this.buildRotSteps);
+      if (this.lastHoverCoords && this.lastHoverCoords.length > 0) {
+        this.world.showBuildGhost(id, this.lastHoverCoords, this.buildRotSteps);
+      } else {
+        this.world.showBuildGhost(null, []);
+      }
     } else {
       this.lastHoverCoords = [];
       this.updateBuildFloatingBar();
@@ -3408,6 +3521,8 @@ class VoxelStrongholdGame {
       }
 
       this.isPointerDown = true;
+      this.pointerDownScreen = { x: e.clientX, y: e.clientY };
+      this.singleBuildPanMoved = false;
       this.lastPointerScreen = { x: e.clientX, y: e.clientY };
 
       const hit = this.screenToWorldGround(e.clientX, e.clientY);
@@ -3495,16 +3610,35 @@ class VoxelStrongholdGame {
         this.prevTwoFingerMid = { x: midX, y: midY };
         return;
       }
+      if (!this.isPointerDown && e.target !== this.canvas) return;
       const hit = this.screenToWorldGround(e.clientX, e.clientY);
 
       if (this.selectedBuild && hit) {
         const g = worldToGrid(hit.x, hit.z);
         this.dragCurrentGrid = g;
-        // ALL buildings support continuous drag-line preview (1x1 row/line) & tap-to-place!
-        if (this.isPointerDown && this.dragStartGrid && this.selectedBuild !== 'gate') {
+        const isLineMode = BUILDINGS[this.selectedBuild]?.mode === 'line';
+        if (this.isPointerDown && this.dragStartGrid && isLineMode) {
           const pts = getGridLine(this.dragStartGrid.gx, this.dragStartGrid.gz, g.gx, g.gz);
           this.lastHoverCoords = pts;
           this.world.showBuildGhost(this.selectedBuild, pts, this.buildRotSteps);
+        } else if (this.isPointerDown && !isLineMode) {
+          // Single-footprint buildings: dragging >16px smoothly pans camera instead of spamming duplicate buildings!
+          const dragPx = Math.hypot(
+            e.clientX - (this.pointerDownScreen?.x || e.clientX),
+            e.clientY - (this.pointerDownScreen?.y || e.clientY)
+          );
+          if (dragPx > 16 || this.singleBuildPanMoved) {
+            this.singleBuildPanMoved = true;
+            const dx = e.clientX - this.lastPointerScreen.x;
+            const dy = e.clientY - this.lastPointerScreen.y;
+            this.lastPointerScreen = { x: e.clientX, y: e.clientY };
+            panCameraByScreenDelta(dx, dy);
+            this.world.showBuildGhost(null, []);
+          } else {
+            this.lastPointerScreen = { x: e.clientX, y: e.clientY };
+            this.lastHoverCoords = [g];
+            this.world.showBuildGhost(this.selectedBuild, [g], this.buildRotSteps);
+          }
         } else {
           this.lastHoverCoords = [g];
           this.world.showBuildGhost(this.selectedBuild, [g], this.buildRotSteps);
@@ -3560,12 +3694,16 @@ class VoxelStrongholdGame {
 
       if (this.selectedBuild && this.dragStartGrid) {
         const endG = hit ? worldToGrid(hit.x, hit.z) : this.dragCurrentGrid || this.dragStartGrid;
-        const coords = this.selectedBuild !== 'gate'
-          ? getGridLine(this.dragStartGrid.gx, this.dragStartGrid.gz, endG.gx, endG.gz)
-          : [endG];
-        this.commitBuild(this.selectedBuild, coords);
+        const isLineMode = BUILDINGS[this.selectedBuild]?.mode === 'line';
+        if (isLineMode || !this.singleBuildPanMoved) {
+          const coords = isLineMode
+            ? getGridLine(this.dragStartGrid.gx, this.dragStartGrid.gz, endG.gx, endG.gz)
+            : [endG];
+          this.commitBuild(this.selectedBuild, coords);
+        }
         this.dragStartGrid = null;
-        if (this.selectedBuild) {
+        this.singleBuildPanMoved = false;
+        if (this.selectedBuild && e.target === this.canvas) {
           this.lastHoverCoords = [endG];
           this.world.showBuildGhost(this.selectedBuild, [endG], this.buildRotSteps);
         } else {
@@ -4120,6 +4258,7 @@ class VoxelStrongholdGame {
 
     atmosphereTime.value += rawDt;
     voxelShaderTime.value = atmosphereTime.value;
+    this.updateAtmosphere(rawDt);
     this.updateDioramaAmbientLife(rawDt);
 
     for (let i = this.scoutLines.length - 1; i >= 0; i--) {
@@ -4151,11 +4290,16 @@ class VoxelStrongholdGame {
     this.camera.lookAt(this.camTarget.x + shakeX, this.camTarget.y, this.camTarget.z + shakeZ);
 
     // Three-quarter side-angled sun (top-right cross-lighting like Clash of Clans & My Civilization!)
-    const snap = 52 / 2048;
-    const sx = Math.round(this.camTarget.x / snap) * snap;
-    const sz = Math.round(this.camTarget.z / snap) * snap;
-    this.sunLight.target.position.set(sx, 0, sz);
-    this.sunLight.position.set(sx + 25, 29, sz + 11);
+    // Snap in the light's projection plane; world-X/Z snapping alone drifts
+    // across shadow texels when the camera pans.
+    const snap = (DIORAMA_LOOK.shadow.extent * 2) / DIORAMA_LOOK.shadow.mapSize;
+    this.shadowAnchor.set(this.camTarget.x, 0, this.camTarget.z);
+    const lightX = this.shadowAnchor.dot(this.shadowRight);
+    const lightY = this.shadowAnchor.dot(this.shadowUp);
+    this.shadowAnchor.addScaledVector(this.shadowRight, Math.round(lightX / snap) * snap - lightX);
+    this.shadowAnchor.addScaledVector(this.shadowUp, Math.round(lightY / snap) * snap - lightY);
+    this.sunLight.target.position.copy(this.shadowAnchor);
+    this.sunLight.position.copy(this.shadowAnchor).add(this.sunOffset);
 
     this.hudTick = (this.hudTick || 0) + rawDt;
     if (this.hudTick > 0.18) {

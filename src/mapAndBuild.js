@@ -21,7 +21,7 @@ export const BUILDINGS = {
   },
   tower: {
     id: 'tower', name: '永昌空心敌台', cat: 'castle', mode: 'single',
-    cost: { stone: 10, wood: 4 }, hp: 700, height: 2.02,
+    cost: { stone: 10, wood: 4 }, hp: 700, height: 1.98,
     desc: '【考据：突出城垣双层敌楼】驻4名铳手，昼烟夜火射火箭引燃火壕',
   },
   gate: {
@@ -446,65 +446,119 @@ export class VoxelWorld {
       }
     }
 
-    // 3. Sculpt Continuous Faceted Low-Poly Wenzhou Longwan Landscape (128x80 jittered triangle mesh!)
-    const NX = GRID_W * 2; // 128 (0.5m facet spacing)
-    const NZ = GRID_H * 2; // 80
+    // 3. Sculpt High-Detail Grounded Ming Jiangnan Landscape (192x120 mesh = ~46,000 tris, smooth valleys + crisp granite cliffs!)
+    const NX = GRID_W * 3; // 192 (0.333m vertex spacing)
+    const NZ = GRID_H * 3; // 120
+    const stepX = GRID_W / NX;
+    const stepZ = GRID_H / NZ;
     const vertPos = new Array((NX + 1) * (NZ + 1));
+    const vertNorm = new Array((NX + 1) * (NZ + 1));
     const vertInfo = new Array((NX + 1) * (NZ + 1));
 
     for (let iz = 0; iz <= NZ; iz++) {
       for (let ix = 0; ix <= NX; ix++) {
-        const fx = ix * 0.5;
-        const fz = iz * 0.5;
+        const fx = ix * stepX;
+        const fz = iz * stepZ;
         const s = this.sampleTopography(Math.min(GRID_W - 0.01, fx), Math.min(GRID_H - 0.01, fz));
         const isEdge = ix === 0 || ix === NX || iz === 0 || iz === NZ;
-        const inCourtyard = (fx >= 7.5 && fx <= 16.5 && fz >= 13.5 && fz <= 25.5) ||
-                            (fx >= 47.0 && fx <= 57.5 && fz >= 14.5 && fz <= 25.0);
-        const jitScale = (isEdge || inCourtyard || s.isFord) ? 0.0 : 0.11;
+        const inPlayerPlaza = fx >= 7.6 && fx <= 15.8 && fz >= 14.0 && fz <= 24.8;
+        const inEnemyPlaza = fx >= 47.5 && fx <= 57.2 && fz >= 14.8 && fz <= 24.8;
+        const jitScale = (isEdge || inPlayerPlaza || inEnemyPlaza || s.isFord) ? 0.0 : 0.055;
         const jx = (voxelHash(ix, 11, iz, 307) - 0.5) * 2 * jitScale;
         const jz = (voxelHash(ix, 23, iz, 311) - 0.5) * 2 * jitScale;
 
         let vy = s.elev;
         if (s.matType === 'water') {
-          vy = -0.64; // Smooth sloped riverbed below -0.32m water plane!
+          vy = -0.64;
         }
         const wx = -GRID_W * 0.5 + fx + jx;
         const wz = -GRID_H * 0.5 + fz + jz;
         const vIdx = iz * (NX + 1) + ix;
         vertPos[vIdx] = [wx, vy, wz];
-        vertInfo[vIdx] = s;
+        vertInfo[vIdx] = { ...s, inPlayerPlaza, inEnemyPlaza };
       }
     }
 
-    const pickFacetColor = (s, cx, cz, slopeY) => {
-      const mTone = fbm2D((cx + GRID_W * 0.5) * 0.25, (cz + GRID_H * 0.5) * 0.25, 733);
-      if (s.matType === 'water') return 0xbfa982;
-      if (s.matType === 'pitchBog') return mTone > 0.5 ? 0x2f293e : 0x3b344d;
-      if (s.matType === 'limestone') return mTone > 0.5 ? 0xdde3e8 : 0xcbd3da;
-      if (s.matType === 'iron') return mTone > 0.62 ? 0xd4763b : 0x826d61;
-      if (s.matType === 'ford' || s.matType === 'river_sand') {
-        return s.isFord ? (mTone > 0.5 ? 0xd2cbc0 : 0xc2b9ab) : 0xe3d2ad;
+    // Compute smooth central-difference vertex normals for natural rolling terrain!
+    for (let iz = 0; iz <= NZ; iz++) {
+      for (let ix = 0; ix <= NX; ix++) {
+        const xm = Math.max(0, ix - 1), xp = Math.min(NX, ix + 1);
+        const zm = Math.max(0, iz - 1), zp = Math.min(NZ, iz + 1);
+        const pL = vertPos[iz * (NX + 1) + xm], pR = vertPos[iz * (NX + 1) + xp];
+        const pD = vertPos[zm * (NX + 1) + ix], pU = vertPos[zp * (NX + 1) + ix];
+        const dx = (pR[1] - pL[1]) / Math.max(0.1, pR[0] - pL[0]);
+        const dz = (pU[1] - pD[1]) / Math.max(0.1, pU[2] - pD[2]);
+        const nl = Math.hypot(-dx, 1.0, -dz) || 1;
+        vertNorm[iz * (NX + 1) + ix] = [-dx / nl, 1.0 / nl, -dz / nl];
       }
-      if (s.matType === 'dirt_road') {
-        return mTone > 0.45 ? 0xcac2b4 : 0xd6cab6; // 青石古驿道!
-      }
-      if (slopeY < 0.80 || s.matType === 'bedrock') {
-        // Faceted Daluo Mountain Granite Cliff Faces (`大罗山青白花岗岩切面`)!
-        if (slopeY > 0.90 && s.elev < 2.6) return mTone > 0.5 ? 0x6ea649 : 0x7cb354;
-        return mTone > 0.55 ? 0x9aa3ab : (mTone < 0.38 ? 0x7c868f : 0x8b959e);
-      }
-      if (s.matType === 'oasis') {
-        return mTone > 0.52 ? 0x5ea342 : 0x6eb34c; // 龙湾水乡丰茂绿洲
-      }
-      if (s.matType === 'dry_steppe') {
-        // East Coast Wokou Tidal Sand & Reefs (`东海滩涂沙洲`)
-        return mTone > 0.5 ? 0xd4c396 : 0xc4b587;
-      }
-      if (s.matType === 'alpine_grass') {
-        return mTone > 0.5 ? 0x76a84c : 0x689942;
-      }
-      return mTone > 0.54 ? 0x82bf54 : (mTone < 0.40 ? 0x6ead47 : 0x78b64e);
+    }
+
+    const mixHex = (hA, hB, t) => {
+      const rA = (hA >> 16) & 255, gA = (hA >> 8) & 255, bA = hA & 255;
+      const rB = (hB >> 16) & 255, gB = (hB >> 8) & 255, bB = hB & 255;
+      return (Math.round(rA + (rB - rA) * t) << 16) | (Math.round(gA + (gB - gA) * t) << 8) | Math.round(bA + (bB - bA) * t);
     };
+
+    const pickTerrainSurface = (s, cx, cz, slopeY) => {
+      const gxF = cx + GRID_W * 0.5;
+      const gzF = cz + GRID_H * 0.5;
+      const mTone = fbm2D(gxF * 0.25, gzF * 0.25, 733);
+      if (s.matType === 'water') return { hex: 0x8f7e63, mat: VMAT.SAND };
+
+      // Smoothly feathered bluestone courtyard border (eliminates sawtooth triangle edges!)
+      const pDistX = Math.max(7.8 - gxF, 0, gxF - 15.6);
+      const pDistZ = Math.max(14.2 - gzF, 0, gzF - 24.6);
+      const pEdge = Math.hypot(pDistX, pDistZ) + (mTone - 0.5) * 0.55;
+      const plazaBlend = 1.0 - smoothstep(0.0, 1.35, pEdge);
+
+      let base = { hex: mTone > 0.55 ? 0x73864b : (mTone < 0.40 ? 0x5f733e : 0x697d45), mat: VMAT.GRASS };
+      if (s.inEnemyPlaza) base = { hex: mTone > 0.5 ? 0x7c7469 : 0x70685e, mat: VMAT.COBBLE };
+      else if (s.matType === 'pitchBog') base = { hex: mTone > 0.5 ? 0x6b6252 : 0x5d5547, mat: VMAT.SAND };
+      else if (s.matType === 'limestone') base = { hex: mTone > 0.5 ? 0xa8a399 : 0x99948a, mat: VMAT.CLIFF };
+      else if (s.matType === 'iron') base = { hex: mTone > 0.60 ? 0xa6653c : 0x78685c, mat: VMAT.CLIFF };
+      else if (s.matType === 'ford' || s.matType === 'river_sand') {
+        base = { hex: s.isFord ? (mTone > 0.5 ? 0xa89f90 : 0x999082) : 0xbdae8e, mat: VMAT.SAND };
+      } else if (s.matType === 'dirt_road') {
+        base = { hex: mTone > 0.45 ? 0xb2a48d : 0xa69880, mat: VMAT.COBBLE };
+      } else if (slopeY < 0.80 || s.matType === 'bedrock') {
+        if (slopeY > 0.90 && s.elev < 2.6) base = { hex: mTone > 0.5 ? 0x657842 : 0x6e8249, mat: VMAT.GRASS };
+        else base = { hex: mTone > 0.55 ? 0x8a847b : (mTone < 0.38 ? 0x6e6962 : 0x7c776e), mat: VMAT.CLIFF };
+      } else if (s.matType === 'oasis') {
+        base = { hex: mTone > 0.52 ? 0x586f3b : 0x627a42, mat: VMAT.GRASS };
+      } else if (s.matType === 'dry_steppe') {
+        base = { hex: mTone > 0.5 ? 0xb5a484 : 0xa69678, mat: VMAT.SAND };
+      } else if (s.matType === 'alpine_grass') {
+        base = { hex: mTone > 0.5 ? 0x647842 : 0x596b3a, mat: VMAT.GRASS };
+      }
+
+      if (plazaBlend > 0.02 && slopeY > 0.85) {
+        const pCol = mTone > 0.5 ? 0xb5a78f : 0xa99b84;
+        return {
+          hex: mixHex(base.hex, pCol, plazaBlend),
+          mat: plazaBlend > 0.48 ? VMAT.COBBLE : base.mat,
+        };
+      }
+      return base;
+    };
+
+    // Shared vertex colours blend meadow, path and rock boundaries without
+    // changing the height field or the build/navigation masks.
+    const surfaceColors = vertInfo.map((info, i) => {
+      const p = vertPos[i];
+      return new THREE.Color(pickTerrainSurface(info, p[0], p[2], vertNorm[i][1]).hex);
+    });
+    const blendedColors = surfaceColors.map((color, i) => {
+      const ix = i % (NX + 1), iz = Math.floor(i / (NX + 1));
+      const blend = color.clone().multiplyScalar(14);
+      let weight = 14;
+      for (const [dx, dz] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+        const x = ix + dx, z = iz + dz;
+        if (x < 0 || x > NX || z < 0 || z > NZ) continue;
+        blend.add(surfaceColors[z * (NX + 1) + x]);
+        weight++;
+      }
+      return blend.multiplyScalar(1 / weight);
+    });
 
     const pb = new PolyBuilder();
     for (let iz = 0; iz < NZ; iz++) {
@@ -515,27 +569,45 @@ export class VoxelWorld {
         const i11 = i01 + 1;
 
         const p00 = vertPos[i00], p10 = vertPos[i10], p01 = vertPos[i01], p11 = vertPos[i11];
+        const n00 = vertNorm[i00], n10 = vertNorm[i10], n01 = vertNorm[i01], n11 = vertNorm[i11];
         const flipDiag = ((ix + iz) & 1) === 1;
         const tris = flipDiag
-          ? [[p00, p01, p11, vertInfo[i00]], [p00, p11, p10, vertInfo[i10]]]
-          : [[p00, p01, p10, vertInfo[i00]], [p10, p01, p11, vertInfo[i11]]];
+          ? [[p00, p01, p11, n00, n01, n11, vertInfo[i00]], [p00, p11, p10, n00, n11, n10, vertInfo[i10]]]
+          : [[p00, p01, p10, n00, n01, n10, vertInfo[i00]], [p10, p01, p11, n10, n01, n11, vertInfo[i11]]];
 
         for (let t = 0; t < 2; t++) {
-          const [a, b, c, sInfo] = tris[t];
+          const [a, b, c, na, nb, nc, sInfo] = tris[t];
           const ax = b[0] - a[0], ay = b[1] - a[1], az = b[2] - a[2];
           const bx = c[0] - a[0], by = c[1] - a[1], bz = c[2] - a[2];
           const nx = ay * bz - az * by;
           const ny = az * bx - ax * bz;
           const nz = ax * by - ay * bx;
-          const nLen = Math.hypot(nx, ny, nz) || 1;
-          const slopeY = ny / nLen;
+          const slopeY = ny / (Math.hypot(nx, ny, nz) || 1);
           const cx = (a[0] + b[0] + c[0]) / 3;
           const cz = (a[2] + b[2] + c[2]) / 3;
-          const baseHex = pickFacetColor(sInfo, cx, cz, slopeY);
-          const jHex = tintHex(baseHex, (voxelHash(ix * 2 + t, 5, iz, 911) - 0.5) * 0.045);
-          pb.tri(a, b, c, jHex, 1.0, 1.0, 1.0, false);
+          const surf = pickTerrainSurface(sInfo, cx, cz, slopeY);
+          const jHex = tintHex(surf.hex, (voxelHash(ix * 2 + t, 5, iz, 911) - 0.5) * 0.032);
+          // Smooth normals on gentle meadows & plazas; crisp rock cleavage on steep granite cliffs!
+          if (slopeY > 0.83 && surf.mat !== VMAT.CLIFF) {
+            pb.triSmooth(a, b, c, na, nb, nc, jHex, 1.0, 1.0, 1.0, false, surf.mat);
+          } else {
+            pb.tri(a, b, c, jHex, 1.0, 1.0, 1.0, false, surf.mat);
+          }
         }
       }
+    }
+
+    // Shared corners use the same base colour with restrained face variation.
+    // Keep the authored normals: cliffs remain faceted, meadows roll smoothly.
+    for (let i = 0; i < pb.pos.length; i += 3) {
+      const ix = Math.round((pb.pos[i] + GRID_W * 0.5) / stepX);
+      const iz = Math.round((pb.pos[i + 2] + GRID_H * 0.5) / stepZ);
+      const color = blendedColors[iz * (NX + 1) + ix];
+      const face = Math.floor(i / 9);
+      const facet = 1 + (voxelHash(face, 3, 7, 911) - 0.5) * 0.028;
+      pb.col[i] = color.r * facet;
+      pb.col[i + 1] = color.g * facet;
+      pb.col[i + 2] = color.b * facet;
     }
 
     // 4. Outer Diorama Island Faceted Granite Skirt (seals edges cleanly down to y = -1.3m!)
@@ -565,9 +637,30 @@ export class VoxelWorld {
       const wShore = [];
       const wIdx = [];
       const wy = -0.32;
-      const isDryAt = (sx, sz) => {
-        if (sx < 0 || sx >= totalSubX || sz < 0 || sz >= totalSubZ) return 0.0;
-        return waterMask[sz * totalSubX + sx] === 0 ? 1.0 : 0.0;
+      const shoreDistance = Float32Array.from(waterMask, (water) => water ? 8 : 0);
+      for (let z = 0; z < totalSubZ; z++) {
+        for (let x = 0; x < totalSubX; x++) {
+          const i = z * totalSubX + x;
+          if (x > 0) shoreDistance[i] = Math.min(shoreDistance[i], shoreDistance[i - 1] + 1);
+          if (z > 0) shoreDistance[i] = Math.min(shoreDistance[i], shoreDistance[i - totalSubX] + 1);
+        }
+      }
+      for (let z = totalSubZ - 1; z >= 0; z--) {
+        for (let x = totalSubX - 1; x >= 0; x--) {
+          const i = z * totalSubX + x;
+          if (x + 1 < totalSubX) shoreDistance[i] = Math.min(shoreDistance[i], shoreDistance[i + 1] + 1);
+          if (z + 1 < totalSubZ) shoreDistance[i] = Math.min(shoreDistance[i], shoreDistance[i + totalSubX] + 1);
+        }
+      }
+      const shoreAtCorner = (vx, vz) => {
+        let sum = 0, count = 0;
+        for (const dz of [-1, 0]) for (const dx of [-1, 0]) {
+          const x = vx + dx, z = vz + dz;
+          if (x < 0 || x >= totalSubX || z < 0 || z >= totalSubZ) continue;
+          sum += shoreDistance[z * totalSubX + x];
+          count++;
+        }
+        return 1 - smoothstep(0, 3.5, sum / Math.max(1, count));
       };
       waterColumns.forEach(({ vx, vz }, i) => {
         const x0 = -GRID_W / 2 + vx * T_VOX;
@@ -576,10 +669,10 @@ export class VoxelWorld {
         const z1 = z0 + T_VOX;
         wPos.push(x0, wy, z1, x1, wy, z1, x1, wy, z0, x0, wy, z0);
         wNorm.push(0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0);
-        const s01 = Math.max(isDryAt(vx - 1, vz), isDryAt(vx, vz + 1), isDryAt(vx - 1, vz + 1) * 0.7);
-        const s11 = Math.max(isDryAt(vx + 1, vz), isDryAt(vx, vz + 1), isDryAt(vx + 1, vz + 1) * 0.7);
-        const s10 = Math.max(isDryAt(vx + 1, vz), isDryAt(vx, vz - 1), isDryAt(vx + 1, vz - 1) * 0.7);
-        const s00 = Math.max(isDryAt(vx - 1, vz), isDryAt(vx, vz - 1), isDryAt(vx - 1, vz - 1) * 0.7);
+        const s01 = shoreAtCorner(vx, vz + 1);
+        const s11 = shoreAtCorner(vx + 1, vz + 1);
+        const s10 = shoreAtCorner(vx + 1, vz);
+        const s00 = shoreAtCorner(vx, vz);
         wShore.push(s01, s11, s10, s00);
         const b = i * 4;
         wIdx.push(b, b + 1, b + 2, b, b + 2, b + 3);
@@ -806,8 +899,8 @@ export class VoxelWorld {
             const tz = wp.z + oz;
             const ty = this.sampleSubElevAt(tx, tz);
             const gCol = c.biome === 'oasis'
-              ? (k % 2 === 0 ? 0x62a840 : 0x76be4d)
-              : (k % 2 === 0 ? 0x7bc24e : 0x91d15b);
+              ? (k % 2 === 0 ? 0x577039 : 0x678044)
+              : (k % 2 === 0 ? 0x667c43 : 0x7b8f4f);
             const sy = 0.65 + voxelHash(x, k, z, 863) * 0.48;
             grassTufts.push({ gx: x, gz: z, x: tx, y: ty - 0.02, z: tz, sx: 0.92, sy, col: gCol });
 
@@ -1210,11 +1303,22 @@ export class VoxelWorld {
     }
   }
 
+  isBuildableSlope(gx, gz, maxStep = 0.72) {
+    const c = this.getCell(gx, gz);
+    if (!c) return false;
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nc = this.getCell(gx + dx, gz + dz);
+      if (nc && nc.ground !== 'water' && Math.abs(nc.elev - c.elev) > maxStep) return false;
+    }
+    return true;
+  }
+
   isGateCellCandidate(gx, gz, team = 'player', freeInit = false) {
     if (!this.inBounds(gx, gz)) return false;
     if (!freeInit && (gx < 2 || gx > 42 || gz < 2 || gz >= GRID_H - 2)) return false;
     const c = this.getCell(gx, gz);
-    if (!c || c.ground === 'water' || c.biome === 'cliff' || c.isFord || c.elev > 1.80) return false;
+    if (!c || c.ground === 'water' || c.biome === 'cliff' || c.isFord || c.elev > 2.65) return false;
+    if (!freeInit && !this.isBuildableSlope(gx, gz, 0.72)) return false;
     if (c.tree || c.resourceNode) return false;
     if (c.structure && !(c.structure.team === team && c.structure.type === 'wall')) return false;
     return true;
@@ -1289,8 +1393,11 @@ export class VoxelWorld {
       return this.hasNearbyBiome(gx, gz, spec.reqBiome, 2);
     }
 
-    if (type === 'pitch') return !cell.hasPitch && cell.elev <= 1.35;
-    return cell.elev <= 1.80;
+    if (type === 'pitch') return !cell.hasPitch && cell.elev <= 1.85;
+    if (['wall', 'tower', 'ballista'].includes(type)) {
+      return cell.elev <= 2.95 && this.isBuildableSlope(gx, gz, 0.85);
+    }
+    return cell.elev <= 2.20 && this.isBuildableSlope(gx, gz, 0.65);
   }
 
   placePitch(gx, gz) {
@@ -1421,6 +1528,8 @@ export class VoxelWorld {
       voxelCount: vCount,
       mesh: group,
       gateLeaf: group.userData.gateLeaf || null,
+      gateLeafL: group.userData.gateLeafL || null,
+      gateLeafR: group.userData.gateLeafR || null,
       gateAxis,
       isOpen: false,
       garrison: [],
@@ -1506,8 +1615,8 @@ export class VoxelWorld {
   }
 
   refreshFortificationsAround(gx, gz) {
-    for (let dx = -1; dx <= 1; dx++) {
-      for (let dz = -1; dz <= 1; dz++) {
+    for (let dx = -2; dx <= 2; dx++) {
+      for (let dz = -2; dz <= 2; dz++) {
         const c = this.getCell(gx + dx, gz + dz);
         if (c && c.structure && (c.structure.type === 'wall' || c.structure.type === 'gate')) {
           this.refreshFortificationVisual(c.structure);

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { applyStylizedWaterShader } from './dioramaRenderer.js';
+import { DIORAMA_LOOK } from './renderStyle.js';
 
 export function createVoxelMaterials() {
   const mkStd = (color, roughness = 0.86, metalness = 0.03, extra = {}) =>
@@ -11,11 +12,12 @@ export function createVoxelMaterials() {
     });
 
   const waterMat = new THREE.MeshStandardMaterial({
-    color: 0x45a3c7,
-    roughness: 0.36,
-    metalness: 0.08,
+    color: 0x355459,
+    roughness: DIORAMA_LOOK.water.roughness,
+    envMapIntensity: DIORAMA_LOOK.water.environment,
+    metalness: 0.0,
     transparent: true,
-    opacity: 0.92,
+    opacity: 0.94,
     polygonOffset: true,
     polygonOffsetFactor: -1,
     polygonOffsetUnits: -1,

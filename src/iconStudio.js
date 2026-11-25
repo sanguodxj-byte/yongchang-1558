@@ -103,20 +103,40 @@ export function generateAll3DIcons(renderer, mats) {
     pivot.add(obj);
     pivot.updateMatrixWorld(true);
 
+    // Clip underground foundation vertices (< -0.02m) on studio clones so models sit on a sleek thin plinth!
+    obj.traverse((child) => {
+      if (child.isMesh && child.geometry && child.geometry.attributes.position) {
+        const pos = child.geometry.attributes.position;
+        let hasDeepSkirt = false;
+        for (let i = 0; i < pos.count; i++) {
+          if (pos.getY(i) < -0.10) { hasDeepSkirt = true; break; }
+        }
+        if (hasDeepSkirt) {
+          child.geometry = child.geometry.clone();
+          const cPos = child.geometry.attributes.position;
+          for (let i = 0; i < cPos.count; i++) {
+            if (cPos.getY(i) < 0) cPos.setY(i, 0);
+          }
+          child.geometry.computeBoundingBox();
+          child.geometry.computeBoundingSphere();
+        }
+      }
+    });
+    pivot.updateMatrixWorld(true);
+
     const box = new THREE.Box3().setFromObject(obj);
     const size = new THREE.Vector3();
     const center = new THREE.Vector3();
     box.getSize(size);
     box.getCenter(center);
 
-    // Seat model cleanly atop pedestal plinth
     const shiftY = -box.min.y;
     obj.position.set(-center.x, shiftY, -center.z);
     pivot.updateMatrixWorld(true);
 
-    const pRadius = Math.max(size.x, size.z) * 0.42;
-    plinth.scale.set(pRadius, 1, pRadius);
-    plinth.position.set(0, -0.06, 0);
+    const pRadius = Math.max(size.x, size.z) * 0.44;
+    plinth.scale.set(pRadius, 0.65, pRadius);
+    plinth.position.set(0, -0.04, 0);
 
     const framedBox = new THREE.Box3().setFromObject(pivot);
     const fSize = new THREE.Vector3();

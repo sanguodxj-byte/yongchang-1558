@@ -1,20 +1,21 @@
 import * as THREE from 'three';
 import {
   PolyBuilder,
+  VMAT,
   getSharedVoxelMaterial,
   getSharedEmissiveMaterial,
 } from './voxelEngine.js';
 import { prefabs } from './voxelPrefabs.js';
 
-const sharedDebrisGeo = new THREE.OctahedronGeometry(0.55, 0);
+const sharedDebrisGeo = new THREE.OctahedronGeometry(0.50, 0);
 
 const stdCache = new Map();
-function stdMat(hex, roughness = 0.76, metalness = 0.05) {
+function stdMat(hex, roughness = 0.80, metalness = 0.04) {
   const key = `${hex}_${roughness}_${metalness}`;
   if (!stdCache.has(key)) {
     stdCache.set(
       key,
-      new THREE.MeshStandardMaterial({ color: hex, roughness, metalness, flatShading: true })
+      new THREE.MeshStandardMaterial({ color: hex, roughness, metalness })
     );
   }
   return stdCache.get(key);
@@ -43,233 +44,305 @@ function getCachedLowPolyPart(cacheKey, builderFn) {
 
 function getRolePalette(role, isEnemy) {
   if (isEnemy) {
-    // East China Sea Wokou Raiders (黑紫具足 + 暗红战袍)
+    // East China Sea Wokou Raiders (黑漆胴丸具足 + 暗褐/绛紫浪人战衣)
     return {
-      skin: 0xebbfa0,
-      cloth: 0x3b2d44,
-      accent: 0x991b1b,
-      armor: 0x272730,
-      armorTrim: 0x7f1d1d,
-      gold: 0xd97706,
-      wood: 0x4a3222,
-      steel: 0xcbd5e1,
+      skin: 0xd9ad8b,
+      cloth: role === 'swordsman' ? 0x453548 : 0x36323b,
+      skirt: 0x28242b,
+      accent: 0x7f1e1d,
+      armor: 0x24252c,
+      gold: 0xb8842e,
+      wood: 0x473121,
+      steel: 0xb8c2cc,
     };
   }
-  // Ming Dynasty Yongchang Militia & Qi-Style Troops (丹朱战袄 + 靛青甲裙 + 鎏金铜饰)
+  // Grounded Ming Yongchang Militia & Qi-Army Palette (靛青/赭石交领短打 + 茜红号衣胖袄 + 熟铁甲片)
+  if (role === 'peasant') {
+    return {
+      skin: 0xdfb18e,
+      cloth: 0x5c6e7a,   // 江南青灰麻布短褐 (exact match to townsfolk in reference!)
+      skirt: 0x424b54,
+      accent: 0xd8cdb8,  // 素白交领中衣
+      armor: 0x6e5a44,
+      gold: 0xa67c38,
+      wood: 0x6b472b,
+      steel: 0xb8c2cc,
+    };
+  }
   return {
-    skin: 0xf4c5a1,
-    cloth: role === 'peasant' ? 0x47647d : 0xb91c1c,
-    accent: role === 'peasant' ? 0x8c6239 : 0x1e3a8a,
-    armor: 0xdbe2e8,
-    armorTrim: 0x991b1b,
-    gold: 0xfacc15,
-    wood: 0x7c4d28,
-    steel: 0xe2e8f0,
+    skin: 0xdfb18e,
+    cloth: role === 'archer' ? 0x364d63 : 0x8f2922, // 神机铳手靛蓝战袄 / 鸳鸯阵茜红胖袄
+    skirt: 0x2b394a,                                // 靛青战裙
+    accent: 0xcfc2ab,
+    armor: 0x565e69,                                // 明代熟铁臂缚/甲叶
+    gold: 0xc89a3c,
+    wood: 0x694528,
+    steel: 0xc7d0d9,
   };
 }
 
-// 1. Low-Poly Faceted Head + Ming Li-Kui Conical Helmet / Douli Bamboo Hat / Wokou Jingasa & Kabuto!
+// 1. Realistic Proportioned Ming / Wokou Head (`~0.15m` cranial height -> 6.5-head figure, NOT chibi!)
 function buildHeadPart(role, isEnemy) {
-  return getCachedLowPolyPart(`lp_head_${role}_${isEnemy ? 'e' : 'p'}`, () => {
+  return getCachedLowPolyPart(`mp_head_${role}_${isEnemy ? 'e' : 'p'}`, () => {
     const pal = getRolePalette(role, isEnemy);
     const pb = new PolyBuilder();
 
-    // Sculpted octagonal low-poly head (y = 0..0.21) + eyes on +Z!
-    pb.prismY(0, 0.01, 0, 0.105, 0.112, 0.19, 8, pal.skin);
-    pb.boxY(0, 0.03, -0.05, 0.19, 0.16, 0.11, 0x29201b); // Dark hair at back
-    const eyeHex = isEnemy ? 0xef4444 : 0x1e293b;
-    pb.boxY(-0.045, 0.09, 0.105, 0.032, 0.032, 0.02, eyeHex);
-    pb.boxY(0.045, 0.09, 0.105, 0.032, 0.032, 0.02, eyeHex);
+    // Neck + Smooth 12-segment anatomical head (y = 0..0.155)
+    pb.prismY(0, -0.02, 0, 0.035, 0.033, 0.045, 10, pal.skin, { matId: VMAT.PLASTER });
+    pb.ellipsoid(0, 0.085, 0, 0.064, 0.076, 0.068, pal.skin, { uSegs: 12, vSegs: 8, matId: VMAT.PLASTER });
+    // Subtle nose bridge, dark brows & eyes on +Z
+    pb.box(0, 0.082, 0.068, 0.016, 0.028, 0.016, pal.skin, { matId: VMAT.PLASTER });
+    pb.box(-0.024, 0.095, 0.063, 0.018, 0.012, 0.010, 0x1e1b18);
+    pb.box( 0.024, 0.095, 0.063, 0.018, 0.012, 0.010, 0x1e1b18);
+    // Back hair wrap
+    pb.ellipsoid(0, 0.095, -0.018, 0.066, 0.068, 0.058, 0x1f1a17, { uSegs: 10, vSegs: 7, matId: VMAT.TIMBER });
 
     if (role === 'peasant') {
-      // Wide Jiangnan Conical Woven-Bamboo Douli Hat (`江南竹编斗笠`)!
-      pb.prismY(0, 0.17, 0, 0.24, 0.02, 0.13, 8, 0xdca842);
-      pb.prismY(0, 0.16, 0, 0.245, 0.24, 0.018, 8, 0xb88628);
+      // Curved Lathe-Turned Jiangnan Woven Bamboo Douli (`江南弧面竹斗笠`)!
+      pb.latheY(0, 0.115, 0, [[0.19, 0], [0.13, 0.035], [0.06, 0.075], [0.008, 0.105]], 14, 0xc49a52, { matId: VMAT.TIMBER });
+      pb.prismY(0, 0.112, 0, 0.192, 0.188, 0.012, 14, 0x8f6b32, { openTop: true, matId: VMAT.TIMBER });
     } else if (role === 'lord') {
       if (!isEnemy) {
-        // Clan Commander Wang Shuguo: Scholar-General Beard + Golden-Winged Ming Helmet (`乌纱鎏金翼善武冠`)!
-        pb.boxY(0, -0.02, 0.09, 0.09, 0.08, 0.04, 0x1e293b, { topScaleX: 1.2 });
-        pb.prismY(0, 0.18, 0, 0.13, 0.10, 0.12, 8, 0x1e293b);
-        pb.prismY(0, 0.18, 0, 0.138, 0.132, 0.04, 8, pal.gold);
-        pb.prismY(0, 0.30, 0, 0.05, 0.01, 0.12, 6, 0xdc2626); // Crimson general's tassel!
-        // Upturned golden side wings (`乌纱展翅`)
-        pb.box(-0.15, 0.25, -0.03, 0.10, 0.05, 0.03, pal.gold, { rotZ: 0.35 });
-        pb.box(0.15, 0.25, -0.03, 0.10, 0.05, 0.03, pal.gold, { rotZ: -0.35 });
+        // Clan Commander Wang Shuguo: Scholar-General Beard + Ming Gilded Winged Helmet (`乌纱鎏金翼善武冠`)
+        pb.boxY(0, 0.00, 0.052, 0.052, 0.055, 0.025, 0x1c1917, { topScaleX: 1.25 });
+        pb.latheY(0, 0.115, 0, [[0.076, 0], [0.078, 0.045], [0.062, 0.095], [0.015, 0.125]], 12, 0x22252c, { matId: VMAT.METAL });
+        pb.prismY(0, 0.115, 0, 0.080, 0.078, 0.024, 12, pal.gold, { openTop: true, matId: VMAT.METAL });
+        pb.latheY(0, 0.23, 0, [[0.032, 0], [0.015, 0.06], [0.004, 0.09]], 8, 0xa8201a, { matId: VMAT.PLASTER });
+        pb.box(-0.095, 0.17, -0.02, 0.075, 0.032, 0.018, pal.gold, { rotZ: 0.30, matId: VMAT.METAL });
+        pb.box( 0.095, 0.17, -0.02, 0.075, 0.032, 0.018, pal.gold, { rotZ: -0.30, matId: VMAT.METAL });
       } else {
-        // Wokou Pirate Warlord Onimaru: Black-Lacquer Kabuto + Golden Crescent Kuwa-gata Horns!
-        pb.prismY(0, 0.16, 0, 0.16, 0.09, 0.14, 8, 0x181820);
-        pb.box(-0.12, 0.31, 0.08, 0.04, 0.18, 0.03, pal.gold, { rotZ: 0.42 });
-        pb.box(0.12, 0.31, 0.08, 0.04, 0.18, 0.03, pal.gold, { rotZ: -0.42 });
-        pb.boxY(0, 0.04, 0.105, 0.13, 0.08, 0.03, 0x991b1b); // Demon mask!
+        // Wokou Warlord Onimaru: Flared Shikoro Kabuto + Golden Kuwa-gata Crescent Horns + Menpo Mask!
+        pb.latheY(0, 0.11, 0, [[0.115, 0], [0.082, 0.03], [0.072, 0.085], [0.02, 0.115]], 12, 0x1c1c22, { matId: VMAT.METAL });
+        pb.box(-0.085, 0.22, 0.055, 0.026, 0.13, 0.016, pal.gold, { rotZ: 0.42, matId: VMAT.METAL });
+        pb.box( 0.085, 0.22, 0.055, 0.026, 0.13, 0.016, pal.gold, { rotZ: -0.42, matId: VMAT.METAL });
+        pb.boxY(0, 0.035, 0.062, 0.085, 0.052, 0.022, 0x7f1d1d, { matId: VMAT.METAL });
       }
     } else if (!isEnemy) {
-      // Ming Soldiers: Iconic Conical Iron/Rattan Li-Kui (`明军红缨笠盔 / 铁兜鍪`)!
+      // Ming Soldiers: Lathe-Sculpted Curved Iron/Lacquer Li-Kui (`明军红缨铁笠盔 / 勇字兜鍪`)
       const isHeavy = role === 'swordsman' || role === 'knight';
-      const helmCol = isHeavy ? 0x94a3b8 : 0x475569;
-      pb.prismY(0, 0.16, 0, isHeavy ? 0.18 : 0.22, 0.03, 0.13, 8, helmCol);
-      pb.prismY(0, 0.16, 0, isHeavy ? 0.185 : 0.225, isHeavy ? 0.18 : 0.22, 0.02, 8, pal.gold);
-      // Vibrant Red-Horsehair Tassel Plume (`大明朱缨`)!
-      pb.prismY(0, 0.28, 0, 0.055, 0.015, 0.10, 6, 0xdc2626);
+      const helmCol = isHeavy ? 0x4b535e : 0x3b424c;
+      const brimR = isHeavy ? 0.125 : 0.155;
+      pb.latheY(0, 0.112, 0, [[brimR, 0], [0.095, 0.032], [0.062, 0.082], [0.018, 0.105]], 14, helmCol, { matId: VMAT.METAL });
+      pb.prismY(0, 0.110, 0, brimR + 0.004, brimR, 0.012, 14, pal.gold, { openTop: true, matId: VMAT.METAL });
+      pb.latheY(0, 0.21, 0, [[0.034, 0], [0.018, 0.055], [0.005, 0.08]], 8, 0xa8241c, { matId: VMAT.PLASTER });
       if (isHeavy) {
-        // Neck & cheek lamellar guards (`顿项护耳`)
-        pb.boxY(-0.11, 0.03, -0.01, 0.03, 0.13, 0.14, 0x991b1b);
-        pb.boxY(0.11, 0.03, -0.01, 0.03, 0.13, 0.14, 0x991b1b);
+        // Curved cheek & neck lamellar flaps (`顿项护耳`)
+        pb.boxY(-0.072, 0.03, -0.01, 0.022, 0.09, 0.095, 0x6e241d, { matId: VMAT.PLASTER });
+        pb.boxY( 0.072, 0.03, -0.01, 0.022, 0.09, 0.095, 0x6e241d, { matId: VMAT.PLASTER });
       }
     } else {
-      // Enemy Wokou Raiders: Ronin Topknot (`swordsman`), Horned Kabuto (`knight`), or Black Jingasa (`spearman`/`archer`)!
       if (role === 'swordsman') {
-        // Bareheaded Ronin topknot (`浪人月代头发髻`) + headband!
-        pb.boxY(0, 0.16, 0, 0.21, 0.03, 0.21, 0x991b1b);
-        pb.cylinderAxis(0, 0.23, -0.02, 0.032, 0.028, 0.12, 6, 'z', 0x18181b);
+        // Bareheaded Wokou Ronin with Chondai Topknot (`月代头武士髻`) & Headband
+        pb.prismY(0, 0.115, 0, 0.068, 0.066, 0.020, 12, 0x7f1d1d, { openTop: true, matId: VMAT.PLASTER });
+        pb.cylinderAxis(0, 0.165, -0.01, 0.020, 0.016, 0.085, 8, 'z', 0x18181b, { matId: VMAT.TIMBER });
       } else if (role === 'knight') {
-        pb.prismY(0, 0.16, 0, 0.17, 0.08, 0.13, 8, 0x7f1d1d);
-        pb.box(-0.10, 0.29, 0.07, 0.03, 0.14, 0.03, pal.gold, { rotZ: 0.4 });
-        pb.box(0.10, 0.29, 0.07, 0.03, 0.14, 0.03, pal.gold, { rotZ: -0.4 });
+        pb.latheY(0, 0.11, 0, [[0.11, 0], [0.078, 0.03], [0.068, 0.08], [0.02, 0.105]], 12, 0x5c1919, { matId: VMAT.METAL });
+        pb.box(-0.075, 0.20, 0.05, 0.022, 0.10, 0.015, pal.gold, { rotZ: 0.4, matId: VMAT.METAL });
+        pb.box( 0.075, 0.20, 0.05, 0.022, 0.10, 0.015, pal.gold, { rotZ: -0.4, matId: VMAT.METAL });
       } else {
-        // Wide black-lacquered Ashigaru Jingasa cone (`足轻黑漆阵笠`)
-        pb.prismY(0, 0.16, 0, 0.23, 0.02, 0.11, 8, 0x1e1e28);
-        pb.boxY(0, 0.18, 0.10, 0.06, 0.04, 0.04, pal.gold);
+        // Wokou Ashigaru Black-Lacquer Jingasa (`足轻阵笠`)
+        pb.latheY(0, 0.115, 0, [[0.165, 0], [0.10, 0.032], [0.01, 0.078]], 14, 0x202026, { matId: VMAT.METAL });
+        pb.boxY(0, 0.13, 0.08, 0.035, 0.028, 0.02, pal.gold, { matId: VMAT.METAL });
       }
     }
     return pb.buildGeometry();
   });
 }
 
-// 2. Low-Poly Tapered Torso + Ming Brigandine / Breastplate Mirror (`护心镜`) / Wokou Sashimono Flag!
+// 2. Anatomical Ming Robe / Brigandine Torso (`y = 0..0.38`, seated at hip `y = 0.40`!)
 function buildTorsoPart(role, isEnemy) {
-  return getCachedLowPolyPart(`lp_torso_${role}_${isEnemy ? 'e' : 'p'}`, () => {
+  return getCachedLowPolyPart(`mp_torso_${role}_${isEnemy ? 'e' : 'p'}`, () => {
     const pal = getRolePalette(role, isEnemy);
     const pb = new PolyBuilder();
 
-    // Flared Armored Skirt Tassets (`甲裙`, y = 0..0.11) + Tapered Chest (`胸甲`, y = 0.10..0.32)
-    const skirtCol = role === 'peasant' ? pal.cloth : pal.accent;
-    pb.boxY(0, 0.0, 0, 0.26, 0.11, 0.19, skirtCol, { topScaleX: 0.88, topScaleZ: 0.88 });
-    pb.boxY(0, 0.10, 0, 0.23, 0.22, 0.17, pal.cloth, { topScaleX: 1.12, topScaleZ: 1.06 });
-    // Waist belt + brass buckle
-    pb.boxY(0, 0.09, 0, 0.25, 0.04, 0.185, 0x3b2314);
-    pb.boxY(0, 0.09, 0.095, 0.05, 0.045, 0.02, pal.gold);
+    // Pleated Lower Robe Hem / Armored Tassets (`战裙/甲裙`, y = -0.04..0.14)
+    pb.latheY(0, -0.04, 0, [[0.138, 0], [0.118, 0.10], [0.098, 0.18]], 12, pal.skirt, { scaleZ: 0.78, matId: VMAT.PLASTER });
+    // Upper Chest Tunic / Brigandine (`胸甲/交领战袄`, y = 0.12..0.37)
+    pb.latheY(0, 0.12, 0, [[0.096, 0], [0.118, 0.14], [0.126, 0.22], [0.085, 0.26]], 12, pal.cloth, { scaleZ: 0.74, matId: VMAT.PLASTER });
+
+    // Crossed Ming Hanfu Collar Lapel (`交领右衽`) + Leather Waist Sash & Brass Plaque!
+    pb.box(0.015, 0.30, 0.078, 0.032, 0.12, 0.018, pal.accent, { rotZ: -0.45, matId: VMAT.PLASTER });
+    pb.box(-0.015, 0.31, 0.080, 0.032, 0.11, 0.018, pal.accent, { rotZ: 0.45, matId: VMAT.PLASTER });
+    pb.prismY(0, 0.115, 0, 0.106, 0.104, 0.038, 12, 0x332216, { scaleZ: 0.78, openTop: true, matId: VMAT.TIMBER });
+    pb.boxY(0, 0.118, 0.082, 0.042, 0.036, 0.018, pal.gold, { matId: VMAT.METAL });
 
     if (!isEnemy && role !== 'peasant') {
-      // Gleaming Ming Round Brass Heart-Protecting Mirror (`明军鎏金护心镜`) on chest!
-      pb.cylinderAxis(0, 0.22, 0.092, 0.058, 0.058, 0.02, 8, 'z', pal.gold);
+      // Ming Brass Heart-Mirror (`护心镜`) + Shoulder Pauldrons (`披膊`)
+      pb.cylinderAxis(0, 0.25, 0.088, 0.046, 0.046, 0.016, 12, 'z', pal.gold, { matId: VMAT.METAL });
+      if (role === 'swordsman' || role === 'knight' || role === 'lord') {
+        pb.ellipsoid(-0.135, 0.32, 0, 0.052, 0.048, 0.058, pal.armor, { uSegs: 9, vSegs: 6, matId: VMAT.METAL });
+        pb.ellipsoid( 0.135, 0.32, 0, 0.052, 0.048, 0.058, pal.armor, { uSegs: 9, vSegs: 6, matId: VMAT.METAL });
+      }
       if (role === 'knight' || role === 'lord') {
-        // Flowing Ming Heroic Cape / Command Back-Pennant (`靠背旗 / 披风`)!
-        pb.box(0, 0.14, -0.11, 0.24, 0.28, 0.03, 0x991b1b, { rotX: 0.14 });
+        pb.box(0, 0.16, -0.095, 0.22, 0.34, 0.022, 0x7d1e19, { rotX: 0.15, matId: VMAT.PLASTER });
       }
     } else if (isEnemy && (role === 'spearman' || role === 'knight')) {
-      // Iconic Wokou Back Sashimono Banner (`倭寇背插指物旗`)!
-      pb.prismY(0.0, 0.12, -0.11, 0.014, 0.012, 0.44, 5, pal.wood);
-      pb.boxY(0.0, 0.32, -0.17, 0.02, 0.22, 0.13, pal.accent);
+      // Wokou Back Sashimono Banner (`背插指物旗`)
+      pb.prismY(0, 0.14, -0.09, 0.011, 0.009, 0.48, 8, pal.wood, { matId: VMAT.TIMBER });
+      pb.boxY(0, 0.36, -0.15, 0.015, 0.24, 0.12, pal.accent, { matId: VMAT.PLASTER });
     }
     return pb.buildGeometry();
   });
 }
 
+// 3. Articulated Thigh + Wrapped Puttee Shin (`绑腿`) + Ming Cloth/Leather Boot (`y = 0..-0.41`)
 function buildLegPart(role, isEnemy) {
-  return getCachedLowPolyPart(`lp_leg_${role}_${isEnemy ? 'e' : 'p'}`, () => {
-    const pal = getRolePalette(role, isEnemy);
+  return getCachedLowPolyPart(`mp_leg_${role}_${isEnemy ? 'e' : 'p'}`, () => {
     const pb = new PolyBuilder();
-    const legCol = role === 'peasant' ? 0x57534e : (isEnemy ? 0x27272a : 0x1e293b);
-    // Hip pivot at y = 0 hanging down to y = -0.265
-    pb.prismY(0, -0.22, 0, 0.042, 0.052, 0.22, 6, legCol);
-    pb.boxY(0, -0.265, 0.015, 0.075, 0.05, 0.11, 0x291d14);
+    const trouserCol = role === 'peasant' ? 0x454d54 : (isEnemy ? 0x26242b : 0x253242);
+    const putteeCol  = role === 'peasant' ? 0xbdb29d : (isEnemy ? 0x3f3a36 : 0xc8bca6);
+    // Thigh (0..-0.19) + Wrapped Puttee Shin (-0.19..-0.36) + Boot (-0.41..-0.35)
+    pb.prismY(0, -0.19, 0, 0.036, 0.048, 0.19, 10, trouserCol, { matId: VMAT.PLASTER });
+    pb.prismY(0, -0.36, 0, 0.028, 0.036, 0.17, 10, putteeCol, { matId: VMAT.PLASTER });
+    pb.boxY(0, -0.41, 0.020, 0.058, 0.052, 0.115, 0x241b15, { topScaleX: 0.88, matId: VMAT.TIMBER });
     return pb.buildGeometry();
   });
 }
 
+// 4. Left Arm + Cuffed Sleeve / Bracer + Domed Wenzhou Rattan Shield (`温州圆弧藤牌`)
 function buildLeftArmPart(role, isEnemy) {
-  return getCachedLowPolyPart(`lp_larm_${role}_${isEnemy ? 'e' : 'p'}`, () => {
+  return getCachedLowPolyPart(`mp_larm_${role}_${isEnemy ? 'e' : 'p'}`, () => {
     const pal = getRolePalette(role, isEnemy);
     const pb = new PolyBuilder();
-    // Shoulder pivot at y = 0 hanging down to y = -0.23
-    pb.prismY(0, -0.20, 0, 0.038, 0.046, 0.20, 6, pal.cloth);
-    pb.prismY(0, -0.24, 0, 0.034, 0.036, 0.05, 6, pal.skin);
+    pb.prismY(0, -0.15, 0, 0.034, 0.042, 0.15, 10, pal.cloth, { matId: VMAT.PLASTER });
+    pb.prismY(0, -0.27, 0, 0.026, 0.033, 0.12, 10, role === 'peasant' ? pal.skin : pal.armor, { matId: VMAT.METAL });
+    pb.ellipsoid(0, -0.29, 0.01, 0.026, 0.028, 0.028, pal.skin, { uSegs: 8, vSegs: 6, matId: VMAT.PLASTER });
 
     if (!isEnemy && role === 'swordsman') {
-      // Iconic Wenzhou Domed Woven-Rattan Shield (`温州圆弧黄藤牌`) held on left arm!
-      pb.cylinderAxis(-0.04, -0.14, 0.08, 0.19, 0.14, 0.04, 8, 'x', 0xd49b38, { endHex: 0xb87e22 });
-      pb.cylinderAxis(-0.065, -0.14, 0.08, 0.07, 0.03, 0.03, 8, 'x', 0xb91c1c);
-    } else if (role === 'lord' && !isEnemy) {
-      // Golden Bracer & Ancestral Seal
-      pb.boxY(-0.02, -0.18, 0.03, 0.06, 0.09, 0.08, pal.gold);
+      // Authentic Convex Woven Wenzhou Rattan Shield (`温州旋编圆藤牌`) held on left forearm!
+      const shieldGrp = new PolyBuilder();
+      shieldGrp.latheY(0, 0, 0, [[0.23, 0], [0.19, 0.03], [0.11, 0.065], [0.02, 0.09]], 14, 0xb88635, {
+        bandColors: [0x966923, 0xbd8b38, 0x8f241e],
+        matId: VMAT.TIMBER,
+      });
+      // Rotate shield vertical on outer -X forearm
+      const sGeo = shieldGrp.buildGeometry().geo;
+      if (sGeo) {
+        sGeo.rotateZ(Math.PI * 0.5);
+        sGeo.rotateY(0.25);
+        sGeo.translate(-0.05, -0.19, 0.09);
+        const pos = sGeo.getAttribute('position');
+        const nrm = sGeo.getAttribute('normal');
+        const col = sGeo.getAttribute('color');
+        for (let i = 0; i < pos.count; i += 3) {
+          pb.triSmooth(
+            [pos.getX(i), pos.getY(i), pos.getZ(i)],
+            [pos.getX(i + 1), pos.getY(i + 1), pos.getZ(i + 1)],
+            [pos.getX(i + 2), pos.getY(i + 2), pos.getZ(i + 2)],
+            [nrm.getX(i), nrm.getY(i), nrm.getZ(i)],
+            [nrm.getX(i + 1), nrm.getY(i + 1), nrm.getZ(i + 1)],
+            [nrm.getX(i + 2), nrm.getY(i + 2), nrm.getZ(i + 2)],
+            0xb88635, 1, 1, 1, false, VMAT.TIMBER
+          );
+          // Preserve baked rattan band colors!
+          const base = pb.col.length - 9;
+          for (let k = 0; k < 3; k++) {
+            pb.col[base + k * 3] = col.getX(i + k);
+            pb.col[base + k * 3 + 1] = col.getY(i + k);
+            pb.col[base + k * 3 + 2] = col.getZ(i + k);
+          }
+        }
+        sGeo.dispose();
+      }
     }
     return pb.buildGeometry();
   });
 }
 
+// 5. Right Arm + High-Detail Historical Ming & Wokou Weapons!
 function buildRightArmPart(role, isEnemy) {
-  return getCachedLowPolyPart(`lp_rarm_${role}_${isEnemy ? 'e' : 'p'}`, () => {
+  return getCachedLowPolyPart(`mp_rarm_${role}_${isEnemy ? 'e' : 'p'}`, () => {
     const pal = getRolePalette(role, isEnemy);
     const pb = new PolyBuilder();
-    pb.prismY(0, -0.20, 0, 0.038, 0.046, 0.20, 6, pal.cloth);
-    pb.prismY(0, -0.24, 0, 0.034, 0.036, 0.05, 6, pal.skin);
+    pb.prismY(0, -0.15, 0, 0.034, 0.042, 0.15, 10, pal.cloth, { matId: VMAT.PLASTER });
+    pb.prismY(0, -0.27, 0, 0.026, 0.033, 0.12, 10, role === 'peasant' ? pal.skin : pal.armor, { matId: VMAT.METAL });
+    pb.ellipsoid(0, -0.29, 0.01, 0.026, 0.028, 0.028, pal.skin, { uSegs: 8, vSegs: 6, matId: VMAT.PLASTER });
 
     if (role === 'spearman') {
       if (!isEnemy) {
-        // Qi Jiguang's Multi-Pronged Green Bamboo Langxian (`毛竹多枝狼筅`)!
-        pb.cylinderAxis(0.02, -0.18, 0.34, 0.022, 0.016, 1.06, 6, 'z', 0x5c9e38);
-        pb.cylinderAxis(0.02, -0.18, 0.89, 0.028, 0.004, 0.16, 5, 'z', pal.steel);
-        // Bristling angled bamboo branches that tangle Wokou katanas!
-        for (const [bz, rx, ry] of [[0.46, 0.45, 0.3], [0.58, -0.45, -0.3], [0.70, 0.42, -0.35], [0.78, -0.42, 0.35]]) {
-          pb.box(0.02, -0.18, bz, 0.018, 0.26, 0.018, 0x74b843, { rotX: rx, rotZ: ry });
-        }
+        // Qi Jiguang's Multi-Branch Moso Bamboo Langxian (`戚家军多枝毛竹狼筅`, 1.36m long + 8 pronged branches!)
+        pb.cylinderAxis(0.01, -0.26, 0.42, 0.020, 0.013, 1.24, 10, 'z', 0x5c7d38, { matId: VMAT.TIMBER });
+        pb.cylinderAxis(0.01, -0.26, 1.08, 0.024, 0.003, 0.16, 8, 'z', pal.steel, { matId: VMAT.METAL });
+        const prongs = [
+          [0.48,  0.50,  0.32], [0.56, -0.50, -0.32], [0.66,  0.46, -0.38], [0.74, -0.46,  0.38],
+          [0.82,  0.42,  0.28], [0.89, -0.42, -0.28], [0.95,  0.36, -0.34], [1.00, -0.36,  0.34],
+        ];
+        prongs.forEach(([bz, rx, rz]) => {
+          pb.box(0.01, -0.26, bz, 0.014, 0.28, 0.014, 0x6b8f42, { rotX: rx, rotZ: rz, matId: VMAT.LEAVES });
+        });
       } else {
-        // Wokou Yari Long Spear
-        pb.cylinderAxis(0.02, -0.18, 0.32, 0.020, 0.018, 0.96, 6, 'z', pal.wood);
-        pb.cylinderAxis(0.02, -0.18, 0.84, 0.028, 0.004, 0.18, 4, 'z', pal.steel);
+        pb.cylinderAxis(0.01, -0.26, 0.38, 0.018, 0.015, 1.12, 10, 'z', pal.wood, { matId: VMAT.TIMBER });
+        pb.cylinderAxis(0.01, -0.26, 0.98, 0.024, 0.003, 0.20, 6, 'z', pal.steel, { matId: VMAT.METAL });
       }
     } else if (role === 'archer') {
       if (!isEnemy) {
-        // Ming Shenji Matchlock Arquebus (`大明神机火绳鸟铳`)!
-        pb.boxY(0.01, -0.22, 0.06, 0.045, 0.06, 0.26, pal.wood);
-        pb.cylinderAxis(0.01, -0.18, 0.30, 0.022, 0.018, 0.48, 6, 'z', 0x334155);
-        pb.boxY(0.01, -0.15, 0.18, 0.025, 0.03, 0.03, 0xff8811, { emissive: true }); // Lit matchcord!
+        // Ming Shenji Matchlock Arquebus (`大明神机火绳鸟铳`)
+        pb.box(0.01, -0.28, 0.06, 0.036, 0.065, 0.28, pal.wood, { rotX: 0.14, matId: VMAT.TIMBER });
+        pb.cylinderAxis(0.01, -0.25, 0.36, 0.020, 0.016, 0.56, 10, 'z', 0x333a42, { matId: VMAT.METAL });
+        pb.cylinderAxis(0.01, -0.25, 0.64, 0.023, 0.020, 0.03, 10, 'z', pal.gold, { matId: VMAT.METAL });
+        pb.boxY(0.01, -0.23, 0.20, 0.022, 0.025, 0.025, 0xff881a, { emissive: true });
       } else {
-        // Wokou Long Yumi Bow
-        pb.box(0.02, -0.16, 0.18, 0.025, 0.56, 0.035, 0x7f1d1d, { rotX: 0.12 });
+        // Asymmetric Japanese Yumi Longbow (`倭寇大弓`)
+        pb.box(0.02, -0.20, 0.18, 0.020, 0.68, 0.028, 0x6e1d1b, { rotX: 0.10, matId: VMAT.TIMBER });
       }
     } else if (role === 'swordsman' || role === 'lord') {
-      // Ming Curved Yanling Saber (`雁翎腰刀`) / Commander Jian vs Wokou Long Katana (`野太刀`)!
-      const bladeLen = role === 'lord' ? 0.56 : (isEnemy ? 0.54 : 0.46);
-      pb.boxY(0.01, -0.22, 0.06, 0.06, 0.05, 0.06, pal.gold); // Guard
-      pb.box(0.01, -0.16, 0.08 + bladeLen * 0.5, 0.024, 0.052, bladeLen, pal.steel, {
-        topScaleY: 0.5,
-        rotX: -0.18,
-      });
+      // Curved Ming Yanling Saber (`雁翎腰刀`) / Nodachi Katana (`野太刀`) built with 2-stage blade curve!
+      pb.cylinderAxis(0.01, -0.27, 0.08, 0.042, 0.042, 0.018, 10, 'z', pal.gold, { matId: VMAT.METAL });
+      pb.box(0.01, -0.25, 0.23, 0.014, 0.038, 0.28, pal.steel, { rotX: -0.12, matId: VMAT.METAL });
+      pb.box(0.01, -0.20, 0.48, 0.012, 0.034, 0.26, pal.steel, { topScaleY: 0.35, rotX: -0.26, matId: VMAT.METAL });
     } else if (role === 'knight') {
-      // Ming Red-Tasseled Heavy Cavalry Lance (`红缨马槊`) vs Wokou Cavalry Naginata!
-      pb.cylinderAxis(0.02, -0.18, 0.38, 0.024, 0.018, 1.12, 6, 'z', isEnemy ? pal.wood : 0x991b1b);
-      pb.cylinderAxis(0.02, -0.18, 0.96, 0.036, 0.005, 0.20, 5, 'z', pal.steel);
+      // Ming Red-Tasseled Heavy Cavalry Lance (`红缨长枪`)
+      pb.cylinderAxis(0.02, -0.25, 0.44, 0.020, 0.015, 1.28, 10, 'z', isEnemy ? pal.wood : 0x7d1e19, { matId: VMAT.TIMBER });
+      pb.cylinderAxis(0.02, -0.25, 1.14, 0.030, 0.004, 0.22, 8, 'z', pal.steel, { matId: VMAT.METAL });
       if (!isEnemy) {
-        pb.prismY(0.02, -0.22, 0.84, 0.045, 0.02, 0.09, 6, 0xdc2626);
+        pb.latheY(0.02, -0.29, 0.98, [[0.038, 0], [0.018, 0.08]], 8, 0xa8201a, { matId: VMAT.PLASTER });
       }
     }
     return pb.buildGeometry();
   });
 }
 
+// 6. Anatomical Ming Warhorse (`参考图写实比例战马` — Muscular Chest, Barrel, Croup, Arched Neck, Saddle & Stirrups!)
 function buildWarhorseBodyPart(isEnemy) {
-  return getCachedLowPolyPart(`lp_horse_${isEnemy ? 'e' : 'p'}`, () => {
+  return getCachedLowPolyPart(`mp_horse_${isEnemy ? 'e' : 'p'}`, () => {
     const pb = new PolyBuilder();
-    const coat = isEnemy ? 0x27242c : 0xf1ede4; // Ming White-Dragon Steed vs Wokou Dark Steed!
-    const cloth = isEnemy ? 0x7f1d1d : 0xb91c1c;
-    // Faceted low-poly horse barrel, angled neck, chamfered muzzle, saddlecloth & tail!
-    pb.boxY(0, 0.06, 0, 0.28, 0.26, 0.64, coat, { topScaleX: 0.92 });
-    pb.boxY(0, 0.14, -0.02, 0.31, 0.20, 0.34, cloth);
-    pb.box(0, 0.38, 0.28, 0.16, 0.32, 0.18, coat, { rotX: 0.42 });
-    pb.box(0, 0.48, 0.42, 0.13, 0.13, 0.24, coat, { rotX: 0.28, topScaleX: 0.75 });
-    pb.box(0, 0.56, 0.34, 0.15, 0.08, 0.14, isEnemy ? 0xd97706 : 0xfacc15, { rotX: 0.28 }); // Chamfron!
-    pb.box(0, 0.18, -0.38, 0.08, 0.26, 0.10, 0x1e293b, { rotX: -0.35 });
+    const coat  = isEnemy ? 0x242024 : 0x382d26; // Sleek Dark Chestnut/Black Ming Steed (like reference!)
+    const mane  = 0x171412;
+    const cloth = isEnemy ? 0x6e1a1a : 0x2b4560; // Indigo Ming Saddlecloth (matching rider in reference!)
+    const gold  = isEnemy ? 0xb8822e : 0xc89a3c;
+
+    // Smooth Anatomical Chest, Ribcage Barrel & Rounded Hindquarters (croup)
+    pb.ellipsoid(0, 0.20,  0.22, 0.155, 0.165, 0.18, coat, { uSegs: 12, vSegs: 8, matId: VMAT.TIMBER });
+    pb.ellipsoid(0, 0.21,  0.00, 0.160, 0.155, 0.28, coat, { uSegs: 12, vSegs: 8, matId: VMAT.TIMBER });
+    pb.ellipsoid(0, 0.22, -0.24, 0.152, 0.162, 0.19, coat, { uSegs: 12, vSegs: 8, matId: VMAT.TIMBER });
+
+    // Layered Indigo Saddlecloth + Carved Leather Saddle Pommel/Cantle + Brass Stirrups!
+    pb.boxY(0, 0.14, -0.02, 0.34, 0.22, 0.34, cloth, { topScaleX: 0.92, matId: VMAT.PLASTER });
+    pb.boxY(0, 0.33,  0.10, 0.20, 0.08, 0.06, 0x4f321d, { matId: VMAT.TIMBER });
+    pb.boxY(0, 0.33, -0.14, 0.22, 0.09, 0.07, 0x4f321d, { matId: VMAT.TIMBER });
+
+    // Arched Muscular Neck, Sculpted Equine Head, Tapered Muzzle, Twin Ears, Mane & Flowing Tail!
+    pb.box(0, 0.40, 0.30, 0.13, 0.34, 0.17, coat, { topScaleX: 0.78, topScaleZ: 0.78, rotX: 0.48, matId: VMAT.TIMBER });
+    pb.box(0, 0.43, 0.24, 0.035, 0.32, 0.07, mane, { rotX: 0.48, matId: VMAT.TIMBER });
+    pb.ellipsoid(0, 0.54, 0.41, 0.075, 0.080, 0.11, coat, { uSegs: 10, vSegs: 7, matId: VMAT.TIMBER });
+    pb.box(0, 0.48, 0.50, 0.085, 0.085, 0.16, coat, { topScaleX: 0.72, rotX: 0.42, matId: VMAT.TIMBER });
+    pb.box(-0.045, 0.63, 0.38, 0.024, 0.065, 0.024, coat, { rotX: 0.2, matId: VMAT.TIMBER });
+    pb.box( 0.045, 0.63, 0.38, 0.024, 0.065, 0.024, coat, { rotX: 0.2, matId: VMAT.TIMBER });
+    // Bridle brass boss & flowing horsehair tail
+    pb.box(0, 0.55, 0.46, 0.10, 0.022, 0.12, gold, { rotX: 0.42, matId: VMAT.METAL });
+    pb.box(0, 0.14, -0.44, 0.065, 0.32, 0.08, mane, { topScaleX: 0.5, rotX: -0.34, matId: VMAT.TIMBER });
     return pb.buildGeometry();
   });
 }
 
 function buildHorseLegPart(isEnemy) {
-  return getCachedLowPolyPart(`lp_hleg_${isEnemy ? 'e' : 'p'}`, () => {
+  return getCachedLowPolyPart(`mp_hleg_${isEnemy ? 'e' : 'p'}`, () => {
     const pb = new PolyBuilder();
-    const coat = isEnemy ? 0x27242c : 0xe2dcd0;
-    pb.prismY(0, -0.28, 0, 0.036, 0.046, 0.28, 5, coat);
-    pb.prismY(0, -0.33, 0, 0.042, 0.038, 0.05, 5, 0x1e293b);
+    const coat = isEnemy ? 0x201c20 : 0x2e241e;
+    // Muscular upper leg (0..-0.20) + slender cannon bone (-0.20..-0.38) + iron-shod hoof (-0.42..-0.37)
+    pb.prismY(0, -0.20, 0, 0.036, 0.055, 0.20, 10, coat, { matId: VMAT.TIMBER });
+    pb.prismY(0, -0.38, 0, 0.026, 0.035, 0.18, 10, coat, { matId: VMAT.TIMBER });
+    pb.prismY(0, -0.42, 0.01, 0.035, 0.030, 0.045, 10, 0x17171a, { matId: VMAT.METAL });
     return pb.buildGeometry();
   });
 }
@@ -277,7 +350,7 @@ function buildHorseLegPart(isEnemy) {
 export function createVoxelHumanoid(role = 'peasant', team = 'player') {
   const root = new THREE.Group();
   const isEnemy = team === 'enemy';
-  const scale = role === 'lord' ? 1.36 : 0.98;
+  const scale = role === 'lord' ? 1.18 : 0.96;
 
   const bodyGroup = new THREE.Group();
   root.add(bodyGroup);
@@ -286,73 +359,73 @@ export function createVoxelHumanoid(role = 'peasant', team = 'player') {
   if (role === 'knight') {
     horseGroup = new THREE.Group();
     const horseBody = buildWarhorseBodyPart(isEnemy);
-    horseBody.position.set(0, 0.28, 0);
+    horseBody.position.set(0, 0.38, 0);
     horseGroup.add(horseBody);
 
     const legs = [];
-    [[-0.11, 0.22], [0.11, 0.22], [-0.11, -0.24], [0.11, -0.24]].forEach(([lx, lz]) => {
+    [[-0.105, 0.24], [0.105, 0.24], [-0.105, -0.24], [0.105, -0.24]].forEach(([lx, lz]) => {
       const leg = buildHorseLegPart(isEnemy);
-      leg.position.set(lx, 0.33, lz);
+      leg.position.set(lx, 0.42, lz);
       horseGroup.add(leg);
       legs.push(leg);
     });
     horseGroup.userData.legs = legs;
     root.add(horseGroup);
-    bodyGroup.position.set(0, 0.33, -0.02);
+    bodyGroup.position.set(0, 0.34, -0.02);
   }
 
   const torso = buildTorsoPart(role, isEnemy);
-  torso.position.set(0, 0.28, 0);
+  torso.position.set(0, 0.40, 0);
   bodyGroup.add(torso);
 
   const head = buildHeadPart(role, isEnemy);
-  head.position.set(0, 0.61, 0);
+  head.position.set(0, 0.77, 0);
   bodyGroup.add(head);
 
   const leftLeg = buildLegPart(role, isEnemy);
   const rightLeg = buildLegPart(role, isEnemy);
   if (role === 'knight') {
-    leftLeg.position.set(-0.20, 0.29, 0.01);
-    rightLeg.position.set(0.20, 0.29, 0.01);
-    leftLeg.rotation.x = -0.42;
-    rightLeg.rotation.x = -0.42;
+    leftLeg.position.set(-0.18, 0.40, 0.02);
+    rightLeg.position.set(0.18, 0.40, 0.02);
+    leftLeg.rotation.x = -0.38;
+    rightLeg.rotation.x = -0.38;
   } else {
-    leftLeg.position.set(-0.076, 0.265, 0);
-    rightLeg.position.set(0.076, 0.265, 0);
+    leftLeg.position.set(-0.062, 0.41, 0);
+    rightLeg.position.set(0.062, 0.41, 0);
   }
   bodyGroup.add(leftLeg, rightLeg);
 
   const leftArm = buildLeftArmPart(role, isEnemy);
-  leftArm.position.set(-0.16, 0.56, 0);
+  leftArm.position.set(-0.148, 0.73, 0);
   const rightArm = buildRightArmPart(role, isEnemy);
-  rightArm.position.set(0.16, 0.56, 0);
+  rightArm.position.set(0.148, 0.73, 0);
   bodyGroup.add(leftArm, rightArm);
 
   let carryMesh = null;
   if (role === 'peasant') {
     carryMesh = new THREE.Mesh(prefabs.getCargoGeometryEntry('wood').geo, getSharedVoxelMaterial());
-    carryMesh.scale.setScalar(0.82);
-    carryMesh.position.set(0, 0.36, 0.22);
+    carryMesh.scale.setScalar(0.84);
+    carryMesh.position.set(0, 0.48, 0.22);
     carryMesh.castShadow = true;
     carryMesh.visible = false;
     bodyGroup.add(carryMesh);
   }
 
   if (role === 'lord') {
-    const auraGeo = new THREE.RingGeometry(0.42, 0.56, 24);
+    const auraGeo = new THREE.RingGeometry(0.40, 0.52, 28);
     auraGeo.rotateX(-Math.PI / 2);
     const auraMat = new THREE.MeshBasicMaterial({
-      color: isEnemy ? 0xef4444 : 0xfacc15,
+      color: isEnemy ? 0xb91c1c : 0xc89a3c,
       side: THREE.DoubleSide,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.75,
       depthWrite: false,
       polygonOffset: true,
       polygonOffsetFactor: -4,
       polygonOffsetUnits: -4,
     });
     const aura = new THREE.Mesh(auraGeo, auraMat);
-    aura.position.y = 0.04;
+    aura.position.y = 0.03;
     aura.userData.noOutline = true;
     root.add(aura);
   }
@@ -373,154 +446,202 @@ export function createVoxelHumanoid(role = 'peasant', team = 'player') {
   return root;
 }
 
-// Floating Ming Golden Commander's Seal & Canopy (`永昌鎏金帅印宝盖`) above garrisoned buildings!
+// Floating Ming Commander Seal & Silk Canopy (`永昌鎏金帅印华盖`)
 export function createBuildingLordCrown(team = 'player') {
   const isEnemy = team === 'enemy';
-  return getCachedLowPolyPart(`lp_lord_seal_${isEnemy ? 'e' : 'p'}`, () => {
+  return getCachedLowPolyPart(`mp_lord_seal_${isEnemy ? 'e' : 'p'}`, () => {
     const pb = new PolyBuilder();
-    const gold = isEnemy ? 0xf59e0b : 0xfacc15;
-    const crimson = isEnemy ? 0x7f1d1d : 0xdc2626;
-    // Square Ming Jade-and-Gold Commander Seal (`大明将军金印`) + Mini Swept Pavilion Canopy!
-    pb.boxY(0, 0.0, 0, 0.36, 0.14, 0.36, gold);
-    pb.boxY(0, 0.14, 0, 0.22, 0.10, 0.22, crimson);
-    pb.chineseRoof(0, 0.24, 0, 0.52, 0.52, 0.22, gold, crimson, {
+    const gold = isEnemy ? 0xb8822e : 0xd4a644;
+    const crimson = isEnemy ? 0x6e1a1a : 0x99241c;
+    pb.boxY(0, 0.0, 0, 0.34, 0.13, 0.34, gold, { matId: VMAT.METAL });
+    pb.boxY(0, 0.13, 0, 0.20, 0.10, 0.20, crimson, { matId: VMAT.PLASTER });
+    pb.chineseRoof(0, 0.23, 0, 0.50, 0.50, 0.22, gold, crimson, {
       style: 'pavilion',
-      sides: 4,
-      cornerLift: 0.08,
-      finialHex: 0xfff3b0,
+      sides: 8,
+      cornerLift: 0.07,
+      finialHex: 0xfff0aa,
     });
-    pb.prismY(0, 0.44, 0, 0.06, 0.01, 0.12, 6, 0xfff3b0, { emissive: true });
     return pb.buildGeometry();
   });
 }
 
-// Low-Poly Jiangnan Slate-Grey Water Buffalo & Flatbed Stone Cart (`江南青水牛拉石车`)!
+// Anatomical Jiangnan Slate-Grey Water Buffalo & Spoked Flatbed Stone Cart (`江南青水牛拉石车`)
 export function createQuarryOxCart() {
   const root = new THREE.Group();
 
-  const oxBody = getCachedLowPolyPart('lp_water_buffalo', () => {
+  const oxBody = getCachedLowPolyPart('mp_water_buffalo', () => {
     const pb = new PolyBuilder();
-    // Muscular slate-grey water buffalo barrel, lowered head & wide sweeping crescent horns!
-    pb.boxY(0, 0.0, 0.38, 0.28, 0.25, 0.52, 0x475569, { topScaleX: 0.92 });
-    pb.boxY(0, 0.04, 0.68, 0.20, 0.18, 0.20, 0x334155);
-    pb.boxY(0, 0.02, 0.80, 0.16, 0.11, 0.10, 0x64748b);
-    // Iconic wide curved Chinese water-buffalo horns (`弯月水牛角`)!
-    pb.box(-0.16, 0.18, 0.68, 0.18, 0.04, 0.05, 0xe2e8f0, { rotZ: -0.28, rotY: 0.25 });
-    pb.box(0.16, 0.18, 0.68, 0.18, 0.04, 0.05, 0xe2e8f0, { rotZ: 0.28, rotY: -0.25 });
+    const hide = 0x4b5259;
+    pb.ellipsoid(0, 0.14, 0.52, 0.165, 0.155, 0.17, hide, { uSegs: 12, vSegs: 8, matId: VMAT.TIMBER });
+    pb.ellipsoid(0, 0.13, 0.34, 0.175, 0.150, 0.24, hide, { uSegs: 12, vSegs: 8, matId: VMAT.TIMBER });
+    pb.ellipsoid(0, 0.14, 0.16, 0.155, 0.145, 0.16, hide, { uSegs: 10, vSegs: 7, matId: VMAT.TIMBER });
+    // Lowered buffalo head, broad muzzle & sweeping curved crescent horns!
+    pb.ellipsoid(0, 0.16, 0.70, 0.105, 0.095, 0.11, 0x3d434a, { uSegs: 10, vSegs: 7, matId: VMAT.TIMBER });
+    pb.box(0, 0.12, 0.81, 0.13, 0.09, 0.10, 0x5c646d, { topScaleX: 0.85, matId: VMAT.TIMBER });
+    for (const sgn of [-1, 1]) {
+      pb.box(sgn * 0.14, 0.21, 0.68, 0.15, 0.036, 0.042, 0xd4cfc5, { rotZ: sgn * 0.24, rotY: -sgn * 0.28, matId: VMAT.ASHLAR });
+      pb.box(sgn * 0.24, 0.26, 0.62, 0.11, 0.028, 0.032, 0xe2ddd3, { rotZ: sgn * 0.58, rotY: -sgn * 0.52, matId: VMAT.ASHLAR });
+    }
+    // Wooden shoulder yoke (`牛轭`)
+    pb.boxY(0, 0.26, 0.54, 0.34, 0.045, 0.06, 0x6b472b, { matId: VMAT.TIMBER });
     return pb.buildGeometry();
   });
-  oxBody.position.set(0, 0.25, 0.0);
+  oxBody.position.set(0, 0.24, 0.0);
   root.add(oxBody);
 
   const legs = [];
   [[-0.12, 0.58], [0.12, 0.58], [-0.12, 0.20], [0.12, 0.20]].forEach(([lx, lz]) => {
-    const leg = getCachedLowPolyPart('lp_buffalo_leg', () => {
+    const leg = getCachedLowPolyPart('mp_buffalo_leg', () => {
       const pb = new PolyBuilder();
-      pb.prismY(0, -0.25, 0, 0.036, 0.044, 0.25, 5, 0x334155);
+      pb.prismY(0, -0.26, 0, 0.034, 0.048, 0.26, 10, 0x3a4047, { matId: VMAT.TIMBER });
       return pb.buildGeometry();
     });
-    leg.position.set(lx, 0.25, lz);
+    leg.position.set(lx, 0.26, lz);
     root.add(leg);
     legs.push(leg);
   });
 
-  const wagon = getCachedLowPolyPart('lp_stone_wagon', () => {
+  const wagon = getCachedLowPolyPart('mp_stone_wagon_bed', () => {
     const pb = new PolyBuilder();
-    pb.boxY(0, 0.15, -0.24, 0.46, 0.05, 0.64, 0x9c6b3b);
-    pb.boxY(-0.21, 0.20, -0.24, 0.04, 0.07, 0.64, 0x7c4d28);
-    pb.boxY(0.21, 0.20, -0.24, 0.04, 0.07, 0.64, 0x7c4d28);
-    // Twin wooden shafts extending forward to buffalo yoke
-    pb.boxY(-0.15, 0.22, 0.24, 0.035, 0.035, 0.44, 0x6e4228);
-    pb.boxY(0.15, 0.22, 0.24, 0.035, 0.035, 0.44, 0x6e4228);
-    for (const [wx, wz] of [[-0.26, -0.06], [0.26, -0.06], [-0.26, -0.42], [0.26, -0.42]]) {
-      pb.cylinderAxis(wx, 0.14, wz, 0.14, 0.14, 0.045, 8, 'x', 0x5c3a21, { endHex: 0x94a3b8 });
-    }
+    pb.boxY(0, 0.17, -0.24, 0.46, 0.05, 0.66, 0x8c6239, { matId: VMAT.TIMBER });
+    pb.boxY(-0.21, 0.22, -0.24, 0.04, 0.08, 0.66, 0x5c3e24, { matId: VMAT.TIMBER });
+    pb.boxY( 0.21, 0.22, -0.24, 0.04, 0.08, 0.66, 0x5c3e24, { matId: VMAT.TIMBER });
+    pb.boxY(-0.15, 0.24, 0.25, 0.035, 0.035, 0.46, 0x5c3e24, { matId: VMAT.TIMBER });
+    pb.boxY( 0.15, 0.24, 0.25, 0.035, 0.035, 0.46, 0x5c3e24, { matId: VMAT.TIMBER });
     return pb.buildGeometry();
   });
   root.add(wagon);
 
-  const carryMesh = getCachedLowPolyPart('lp_ox_granite_load', () => {
+  const wheels = [];
+  const wheelProto = () => getCachedLowPolyPart('mp_cart_wheel', () => {
     const pb = new PolyBuilder();
-    pb.boxY(-0.09, 0.0, -0.10, 0.16, 0.12, 0.22, 0xdbe2e8);
-    pb.boxY(0.09, 0.0, -0.10, 0.16, 0.12, 0.22, 0xcbd5e1);
-    pb.boxY(0.0, 0.0, 0.13, 0.30, 0.12, 0.20, 0xe2e8f0);
-    pb.boxY(0.0, 0.12, 0.0, 0.24, 0.11, 0.28, 0xf1f5f9);
+    pb.spokedWheel(0, 0, 0, 0.15, 0.04, 8, 0x333840, 0x6b472b, 0x8f6b32);
     return pb.buildGeometry();
   });
-  carryMesh.position.set(0, 0.20, -0.24);
+  for (const [wx, wz] of [[-0.26, -0.06], [0.26, -0.06], [-0.26, -0.42], [0.26, -0.42]]) {
+    const w = wheelProto();
+    w.position.set(wx, 0.15, wz);
+    root.add(w);
+    wheels.push(w);
+  }
+
+  const carryMesh = getCachedLowPolyPart('mp_ox_granite_load', () => {
+    const pb = new PolyBuilder();
+    pb.boxY(-0.09, 0.0, -0.10, 0.16, 0.12, 0.22, 0x9e988e, { matId: VMAT.ASHLAR });
+    pb.boxY( 0.09, 0.0, -0.10, 0.16, 0.12, 0.22, 0x8f8980, { matId: VMAT.ASHLAR });
+    pb.boxY( 0.00, 0.0,  0.13, 0.30, 0.12, 0.20, 0xa8a298, { matId: VMAT.ASHLAR });
+    pb.boxY( 0.00, 0.12, 0.00, 0.24, 0.11, 0.28, 0xb5afa5, { matId: VMAT.ASHLAR });
+    return pb.buildGeometry();
+  });
+  carryMesh.position.set(0, 0.22, -0.24);
   carryMesh.visible = false;
   root.add(carryMesh);
 
-  root.userData = { oxLegs: legs, carryMesh };
+  root.userData = { oxLegs: legs, wheels, carryMesh };
   return root;
 }
 
 /**
- * 2-Body-Width Low-Poly Siege Engines (`<= 0.89m` wide -> passes 1.50m Yongchang Qiaolou Gate with ease!):
- * - `trebuchet`: 明军红衣/虎蹲重炮车 (Player) vs 倭寇焙烙大筒车 (Enemy)
- * - `ram`: 明军乌龟包铁冲车 (Player) vs 倭寇安宅旱船破城槌 (Enemy)
+ * High-Detail 2-Body-Width Ming & Wokou Siege Machinery (`<= 0.88m` wide -> passes 1.46m Gatehouse Archway!):
+ * - `trebuchet`: 明军神机红衣/虎蹲炮车 (4 Spoked Artillery Wheels + Bronze Cannon + Ammo Chest)
+ * - `ram`: 明军乌龟包铁冲车 (4 Spoked Wheels + Ribbed Iron-Tile Tortoise Shed + Swinging Bronze Ram)
  */
 export function createSiegeEngine(type = 'trebuchet', team = 'player') {
   const root = new THREE.Group();
   const isEnemy = team === 'enemy';
-  const bannerHex = isEnemy ? 0x991b1b : 0xdc2626;
-  const woodHex = isEnemy ? 0x3f2b1d : 0x8c5830;
+  const bannerHex = isEnemy ? 0x7f1d1d : 0x94231d;
+  const woodHex = isEnemy ? 0x3b281c : 0x6b4628;
+  const wheels = [];
+
+  const makeWheel = (r) => getCachedLowPolyPart(`mp_siege_wheel_${isEnemy ? 'e' : 'p'}_${r}`, () => {
+    const pb = new PolyBuilder();
+    pb.spokedWheel(0, 0, 0, r, 0.052, 10, 0x2c323a, woodHex, 0xa67c38);
+    return pb.buildGeometry();
+  });
 
   if (type === 'trebuchet') {
-    const pb = new PolyBuilder();
-    // 4 Iron-Rimmed Low-Poly Artillery Wheels (total width = 0.86m <= 2 body-widths!)
     for (const [wx, wz] of [[-0.40, 0.38], [0.40, 0.38], [-0.40, -0.38], [0.40, -0.38]]) {
-      pb.cylinderAxis(wx, 0.18, wz, 0.18, 0.18, 0.055, 8, 'x', 0x475569, { endHex: woodHex });
+      const w = makeWheel(0.19);
+      w.position.set(wx, 0.19, wz);
+      root.add(w);
+      wheels.push(w);
     }
-    pb.boxY(0, 0.16, 0, 0.72, 0.10, 1.18, woodHex);
-    pb.boxY(-0.24, 0.26, 0, 0.08, 0.34, 0.76, isEnemy ? 0x272730 : 0x991b1b, { topScaleZ: 0.7 });
-    pb.boxY(0.24, 0.26, 0, 0.08, 0.34, 0.76, isEnemy ? 0x272730 : 0x991b1b, { topScaleZ: 0.7 });
-    // Stacked iron shells on rear rack + war banner!
-    pb.facetedBlob(0, 0.32, -0.44, 0.11, 0.11, 0.11, 0x334155, 7, 0.05);
-    pb.prismY(0.28, 0.26, -0.46, 0.02, 0.016, 0.85, 5, woodHex);
-    pb.boxY(0.28, 0.82, -0.58, 0.02, 0.26, 0.22, bannerHex);
+
+    const pb = new PolyBuilder();
+    // Heavy Mortised Artillery Chassis + Iron Axle Straps + Twin Stepped Gun Cheeks!
+    pb.boxY(0, 0.17, 0, 0.72, 0.09, 1.22, woodHex, { matId: VMAT.TIMBER });
+    pb.cylinderAxis(0, 0.19,  0.38, 0.032, 0.032, 0.84, 8, 'x', 0x333840, { matId: VMAT.METAL });
+    pb.cylinderAxis(0, 0.19, -0.38, 0.032, 0.032, 0.84, 8, 'x', 0x333840, { matId: VMAT.METAL });
+    for (const sx of [-0.20, 0.20]) {
+      pb.boxY(sx, 0.26, 0.04, 0.08, 0.32, 0.78, isEnemy ? 0x28262e : 0x73241d, { topScaleZ: 0.68, matId: VMAT.TIMBER });
+      pb.boxY(sx, 0.56, 0.10, 0.095, 0.04, 0.18, 0x2c323a, { matId: VMAT.METAL }); // Trunnion capsquare
+    }
+    // Rear Ammunition Box, Stacked Iron Cannonballs & Command Pennant!
+    pb.boxY(-0.16, 0.26, -0.44, 0.24, 0.16, 0.22, woodHex, { matId: VMAT.TIMBER });
+    for (const [bx, by, bz] of [[0.14, 0.31, -0.42], [0.22, 0.31, -0.42], [0.18, 0.31, -0.49], [0.18, 0.38, -0.45]]) {
+      pb.ellipsoid(bx, by, bz, 0.048, 0.048, 0.048, 0x2a2f36, { uSegs: 8, vSegs: 6, matId: VMAT.METAL });
+    }
+    pb.prismY(0.28, 0.26, -0.50, 0.020, 0.016, 0.90, 8, woodHex, { matId: VMAT.TIMBER });
+    pb.boxY(0.28, 0.84, -0.62, 0.020, 0.28, 0.22, bannerHex, { matId: VMAT.PLASTER });
     root.add(pb.buildMeshGroup(true, true));
 
-    // Pivoting Heavy Cast-Bronze Ming Cannon / Wokou Ozutsu Mortar (`armPivot`)!
+    // Pivoting 14-Segment Cast-Bronze Ming Cannon / Wokou Heavy Ozutsu (`armPivot`)!
     const ag = new PolyBuilder();
-    const barrelHex = isEnemy ? 0x334155 : 0xc98a2c;
-    ag.cylinderAxis(0, 0.0, 0.16, 0.15, 0.11, 0.96, 8, 'z', barrelHex, { endHex: 0x0f172a });
-    ag.cylinderAxis(0, 0.0, -0.14, 0.168, 0.168, 0.07, 8, 'z', 0xfacc15);
-    ag.cylinderAxis(0, 0.0, 0.22, 0.148, 0.148, 0.06, 8, 'z', 0xfacc15);
-    ag.cylinderAxis(0, 0.0, 0.54, 0.132, 0.132, 0.06, 8, 'z', 0xfacc15);
+    const barrelHex = isEnemy ? 0x383e47 : 0xb5802c;
+    const ringHex   = isEnemy ? 0x8f6624 : 0xd4a442;
+    ag.ellipsoid(0, 0, -0.40, 0.055, 0.055, 0.065, barrelHex, { uSegs: 10, vSegs: 7, matId: VMAT.METAL }); // Cascabel knob
+    ag.cylinderAxis(0, 0, 0.12, 0.145, 0.105, 1.02, 14, 'z', barrelHex, { endHex: 0x111317, matId: VMAT.METAL });
+    ag.cylinderAxis(0, 0, 0.62, 0.105, 0.128, 0.08, 14, 'z', ringHex, { endHex: 0x111317, matId: VMAT.METAL }); // Flared muzzle swell!
+    ag.cylinderAxis(0, 0, 0.06, 0.040, 0.040, 0.48, 10, 'x', ringHex, { matId: VMAT.METAL }); // Trunnions
+    for (const rz of [-0.26, -0.02, 0.22, 0.44]) {
+      const rr = 0.154 - (rz + 0.26) * 0.045;
+      ag.cylinderAxis(0, 0, rz, rr, rr, 0.048, 14, 'z', ringHex, { matId: VMAT.METAL });
+    }
     const armPivot = new THREE.Group();
-    armPivot.position.set(0, 0.56, 0.0);
+    armPivot.position.set(0, 0.56, 0.04);
     armPivot.add(ag.buildMeshGroup(true, true));
-    armPivot.rotation.x = -0.22;
+    armPivot.rotation.x = -0.20;
     root.add(armPivot);
-    root.userData.armPivot = armPivot;
+    root.userData = { armPivot, wheels };
   } else {
-    // Swept-Roof Armored Siege Ram (`明军包铁冲车` vs `倭寇旱船撞槌`, 0.88m wide!)
-    const pb = new PolyBuilder();
     for (const [wx, wz] of [[-0.41, 0.40], [0.41, 0.40], [-0.41, -0.40], [0.41, -0.40]]) {
-      pb.cylinderAxis(wx, 0.17, wz, 0.17, 0.17, 0.05, 8, 'x', 0x334155, { endHex: woodHex });
+      const w = makeWheel(0.17);
+      w.position.set(wx, 0.17, wz);
+      root.add(w);
+      wheels.push(w);
     }
-    pb.boxY(0, 0.16, 0, 0.76, 0.08, 1.24, woodHex);
-    for (const [px, pz] of [[-0.32, -0.46], [0.32, -0.46], [-0.32, 0.46], [0.32, 0.46]]) {
-      pb.prismY(px, 0.24, pz, 0.036, 0.032, 0.46, 5, isEnemy ? woodHex : 0x991b1b);
+
+    const pb = new PolyBuilder();
+    pb.boxY(0, 0.16, 0, 0.76, 0.08, 1.28, woodHex, { matId: VMAT.TIMBER });
+    for (const [px, pz] of [[-0.33, -0.48], [0.33, -0.48], [-0.33, 0.0], [0.33, 0.0], [-0.33, 0.48], [0.33, 0.48]]) {
+      pb.prismY(px, 0.24, pz, 0.036, 0.033, 0.48, 10, isEnemy ? woodHex : 0x6e2920, { matId: VMAT.TIMBER });
     }
-    // Swept Chinese Iron-Clad Shed Roof!
-    pb.chineseRoof(0, 0.68, 0, 0.88, 1.34, 0.34, isEnemy ? 0x262833 : 0x334155, 0xfacc15, {
+    // Sloped Armored Side-Skirts + High-Detail Ribbed Tortoise Roof!
+    for (const sx of [-0.36, 0.36]) {
+      pb.box(sx, 0.46, 0, 0.05, 0.38, 1.22, 0x3b424c, { rotZ: sx > 0 ? 0.16 : -0.16, matId: VMAT.METAL });
+    }
+    pb.chineseRoof(0, 0.70, 0, 0.88, 1.38, 0.34, isEnemy ? 0x262830 : 0x383e47, 0xb88636, {
       style: 'gable',
-      cornerLift: 0.08,
+      cornerLift: 0.07,
       noFinial: true,
       gableWallHex: bannerHex,
     });
     root.add(pb.buildMeshGroup(true, true));
 
-    // Swinging Bronze-Headed Battering Log (`铜首破城撞木`)!
+    // Swinging Iron-Hoop Battering Trunk + Sculpted Bronze Ram Head (`铜铸兽首撞木`)!
     const rg = new PolyBuilder();
-    rg.cylinderAxis(0, 0, 0.05, 0.09, 0.09, 1.16, 7, 'z', 0x6e472b);
-    rg.cylinderAxis(0, 0, 0.68, 0.125, 0.09, 0.22, 8, 'z', isEnemy ? 0x94a3b8 : 0xfacc15);
+    rg.cylinderAxis(0, 0, 0.04, 0.095, 0.095, 1.22, 12, 'z', 0x5c3e24, { matId: VMAT.TIMBER });
+    for (const hz of [-0.32, 0.05, 0.40]) {
+      rg.cylinderAxis(0, 0, hz, 0.104, 0.104, 0.045, 12, 'z', 0x2c323a, { matId: VMAT.METAL });
+    }
+    rg.cylinderAxis(0, 0, 0.72, 0.135, 0.095, 0.24, 12, 'z', isEnemy ? 0x64748b : 0xc89a3c, { matId: VMAT.METAL });
+    // Suspension iron chains
+    rg.prismY(0, 0.08, -0.26, 0.014, 0.014, 0.26, 6, 0x64748b, { matId: VMAT.METAL });
+    rg.prismY(0, 0.08,  0.34, 0.014, 0.014, 0.26, 6, 0x64748b, { matId: VMAT.METAL });
     const ramLog = rg.buildMeshGroup(true, true);
     ramLog.position.set(0, 0.42, 0);
     root.add(ramLog);
-    root.userData.ramLog = ramLog;
+    root.userData = { ramLog, wheels };
   }
 
   return root;
@@ -530,40 +651,39 @@ export function createSquadBanner(unitType, team = 'player') {
   const group = new THREE.Group();
   const isEnemy = team === 'enemy';
 
-  // Low-Poly Ming Serrated Command Flag (`大明军旗`) vs Wokou Sashimono!
   const bpb = new PolyBuilder();
-  bpb.prismY(0, 0, 0, 0.032, 0.024, 1.82, 6, isEnemy ? 0x38281e : 0x991b1b);
-  bpb.prismY(0, 1.82, 0, 0.05, 0.008, 0.14, 5, 0xfacc15);
+  bpb.prismY(0, 0, 0, 0.028, 0.020, 1.88, 10, isEnemy ? 0x38281e : 0x6e2920, { matId: VMAT.TIMBER });
+  bpb.latheY(0, 1.88, 0, [[0.045, 0], [0.015, 0.09], [0.004, 0.15]], 8, 0xc89a3c, { matId: VMAT.METAL });
   const poleMesh = bpb.buildMeshGroup(true, false);
 
   const clothColors = {
-    spearman: 0x15803d,
-    archer: 0x0369a1,
-    swordsman: 0xb91c1c,
-    knight: 0xd97706,
-    trebuchet: 0x7e22ce,
-    ram: 0xc2410c,
+    spearman: 0x3f6232,
+    archer:   0x2b4c6b,
+    swordsman: 0x8f241e,
+    knight:   0xa86b24,
+    trebuchet: 0x5b3256,
+    ram:      0x8c3b22,
   };
-  const clothHex = isEnemy ? 0x7f1d1d : (clothColors[unitType] || 0xb91c1c);
+  const clothHex = isEnemy ? 0x6e1a1a : (clothColors[unitType] || 0x8f241e);
   const cpb = new PolyBuilder();
-  cpb.boxY(0, 1.34, 0.28, 0.035, 0.44, 0.54, clothHex);
-  cpb.boxY(0, 1.44, 0.26, 0.048, 0.22, 0.22, isEnemy ? 0x18181b : 0xfacc15);
+  cpb.boxY(0, 1.38, 0.26, 0.028, 0.44, 0.50, clothHex, { matId: VMAT.PLASTER });
+  cpb.boxY(0, 1.48, 0.24, 0.038, 0.22, 0.22, isEnemy ? 0x18181b : 0xc89a3c, { matId: VMAT.PLASTER });
   const cloth = cpb.buildMeshGroup(true, false);
 
-  const ringGeo = new THREE.RingGeometry(0.46, 0.62, 20);
+  const ringGeo = new THREE.RingGeometry(0.44, 0.58, 24);
   ringGeo.rotateX(-Math.PI / 2);
   const ringMat = new THREE.MeshBasicMaterial({
-    color: isEnemy ? 0xef4444 : 0xfacc15,
+    color: isEnemy ? 0xb91c1c : 0xc89a3c,
     side: THREE.DoubleSide,
     transparent: true,
-    opacity: 0.72,
+    opacity: 0.65,
     depthWrite: false,
     polygonOffset: true,
     polygonOffsetFactor: -3,
     polygonOffsetUnits: -3,
   });
   const ring = new THREE.Mesh(ringGeo, ringMat);
-  ring.position.y = 0.05 + Math.random() * 0.015;
+  ring.position.y = 0.04 + Math.random() * 0.015;
   ring.userData.noOutline = true;
 
   group.add(poleMesh, cloth, ring);
@@ -588,7 +708,7 @@ export class VoxelDebrisSystem {
   constructor(scene, maxParticles = 260) {
     this.pool = [];
     for (let i = 0; i < maxParticles; i++) {
-      const m = new THREE.Mesh(sharedDebrisGeo, stdMat(0xd6d3cd, 0.80, 0.02));
+      const m = new THREE.Mesh(sharedDebrisGeo, stdMat(0xc4b9a5, 0.84, 0.02));
       m.castShadow = true;
       m.receiveShadow = true;
       m.visible = false;
@@ -604,11 +724,11 @@ export class VoxelDebrisSystem {
     this.cursor = 0;
   }
 
-  burst(x, y, z, hexColor = 0xd6d3cd, count = 14, force = 1.0, size = 0.22) {
+  burst(x, y, z, hexColor = 0xc4b9a5, count = 14, force = 1.0, size = 0.20) {
     const isEmissiveFire = hexColor === 0xff7700 || hexColor === 0xff8811 || hexColor === 0xff9922;
     const mat = isEmissiveFire
       ? new THREE.MeshBasicMaterial({ color: hexColor })
-      : stdMat(hexColor, 0.80, 0.04);
+      : stdMat(hexColor, 0.84, 0.04);
 
     for (let i = 0; i < count; i++) {
       const p = this.pool[this.cursor];
@@ -657,7 +777,7 @@ export class VoxelDebrisSystem {
         p.vz *= 0.65;
       }
       if (p.life < 0.25) {
-        p.mesh.scale.setScalar(Math.max(0.02, (p.life / 0.25) * 0.20));
+        p.mesh.scale.setScalar(Math.max(0.02, (p.life / 0.25) * 0.18));
       }
     }
   }
