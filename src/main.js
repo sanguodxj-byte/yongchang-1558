@@ -38,50 +38,50 @@ function lerpAngle(cur, target, t) {
 
 export const UNIT_SPECS = {
   spearman: {
-    name: '长矛民兵队', count: 4, popCost: 2,
+    name: '毛竹狼筅乡勇', count: 4, popCost: 2,
     cost: { wood: 4, gold: 18 },
-    hp: 90, dmg: 14, range: 1.3, speed: 3.4, cooldown: 0.95,
+    hp: 96, dmg: 16, range: 1.45, speed: 3.4, cooldown: 0.92,
     siegeDmg: 11,
   },
   archer: {
-    name: '十字军弓手', count: 4, popCost: 2,
+    name: '神机鸟铳手', count: 4, popCost: 2,
     cost: { bows: 2, gold: 28 },
-    hp: 70, dmg: 15, range: 8.2, speed: 3.1, cooldown: 1.2,
-    siegeDmg: 4, isRanged: true,
+    hp: 74, dmg: 17, range: 8.5, speed: 3.1, cooldown: 1.18,
+    siegeDmg: 5, isRanged: true,
   },
   swordsman: {
-    name: '铁甲剑士队', count: 4, popCost: 2,
-    cost: { armor: 2, gold: 45 },
-    hp: 185, dmg: 25, range: 1.3, speed: 2.6, cooldown: 0.92,
-    siegeDmg: 20,
+    name: '温州藤牌刀兵', count: 4, popCost: 2,
+    cost: { armor: 2, gold: 44 },
+    hp: 195, dmg: 26, range: 1.32, speed: 2.7, cooldown: 0.90,
+    siegeDmg: 20, arrowResist: 0.45,
   },
   knight: {
-    name: '圣殿骑士团', count: 3, popCost: 2,
-    cost: { armor: 2, gold: 70 },
-    hp: 235, dmg: 34, range: 1.5, speed: 5.0, cooldown: 0.85,
-    siegeDmg: 24,
+    name: '武状元宗族铁骑', count: 3, popCost: 2,
+    cost: { armor: 2, gold: 68 },
+    hp: 245, dmg: 35, range: 1.55, speed: 5.0, cooldown: 0.84,
+    siegeDmg: 25,
   },
   trebuchet: {
-    name: '配重投石机', count: 1, popCost: 1,
-    cost: { wood: 14, stone: 12, gold: 85 },
-    hp: 360, dmg: 70, range: 16.5, speed: 1.55, cooldown: 4.0,
-    siegeDmg: 175, isRanged: true, isSiege: true,
+    name: '明军虎蹲炮车', count: 1, popCost: 1,
+    cost: { wood: 14, stone: 12, gold: 82 },
+    hp: 380, dmg: 75, range: 16.5, speed: 1.6, cooldown: 3.9,
+    siegeDmg: 180, isRanged: true, isSiege: true,
   },
   ram: {
-    name: '龟甲攻城锤', count: 1, popCost: 1,
-    cost: { wood: 12, armor: 1, gold: 60 },
-    hp: 620, dmg: 22, range: 1.75, speed: 1.95, cooldown: 1.75,
-    siegeDmg: 135, isSiege: true, arrowResist: 0.75,
+    name: '乌龟包铁冲车', count: 1, popCost: 1,
+    cost: { wood: 12, armor: 1, gold: 58 },
+    hp: 650, dmg: 24, range: 1.75, speed: 1.98, cooldown: 1.7,
+    siegeDmg: 140, isSiege: true, arrowResist: 0.78,
   },
 };
 
 const WOLF_TAUNTS = {
-  start: '黑狼公爵：“哼，只靠河湾旁那一座孤零零的基础小堡？75秒入夜后本公爵踏平你的山谷！”',
-  wave1: '黑狼公爵：“先锋涉过中央砾石浅滩，给我烧光他们的领地！”',
-  wave2: '黑狼公爵：“正面推攻城锤过河，奇兵从北湾浅滩绕袭山麓！”',
-  wave3: '黑狼公爵：“把配重投石机推到河东岸，轰碎他们新建的城墙！”',
-  wave4: '黑狼公爵：“黑狼铁骑全军渡河！合围西岸台地！”',
-  underAttack: '黑狼公爵：“什么？！他们竟从一座孤堡发展出大军反攻我的东山要塞？！死守城门！！”',
+  start: '【嘉靖戊午·1558】宗长王叔果：“先叔王沛、堂兄王德殉国卫乡！今合族筑永昌石堡、开堡内水田，誓与父老死守桑梓！”',
+  wave1: '【第一幕·戊午初警】倭酋黑鲨鬼丸：“东海浪人听令！趁他们永昌石垣未合，涉过浅滩洗劫永嘉场！”',
+  wave2: '【第二幕·水陆合围】黑鲨鬼丸：“推旱船破城槌猛撞迎川谯楼，奇兵自北湾水道偷袭侧翼！”',
+  wave3: '【第三幕·困城观稼】史载名局：倭寇架焙烙大筒窥探堡内——若水田充盈，则敌胆寒而我军士气倍增！',
+  wave4: '【第四幕·烽火平海】宗长王叔果：“燃空心敌台烽火！狼筅居前、藤牌护翼、鸟铳齐发，焚毁东海倭寇安宅船寨！”',
+  underAttack: '黑鲨鬼丸：“怎么可能？！小小民间乡堡竟练出如此精兵反攻我的安宅巨舰本阵？！死守水寨！！”',
 };
 
 class VoxelStrongholdGame {
@@ -247,6 +247,15 @@ class VoxelStrongholdGame {
 
     this.airdropsUsed = 0;
     this.emergencyGuardUsed = false;
+    this.clanSteleWallsUnlocked = false;
+    this.clanSteleMartialUnlocked = false;
+    this.fortressPaddyUnlocked = false;
+    this.scoutLines = [];
+
+    // Menu flow: 'title' -> 'main' -> 'play' <-> 'pause'. While not 'play', simulation dt is 0
+    // (ambient life / camera keep breathing via rawDt so the backdrop stays alive).
+    this.menuState = 'title';
+    this.pendingIntroTaunt = true;
 
     this.spawnInitialForces();
     this.syncCampfirePeasants();
@@ -254,8 +263,8 @@ class VoxelStrongholdGame {
     this.world.updateStockpileVisuals(this.res);
     this.refreshFlowFields();
     this.bindUI();
+    this.bindMenus();
     this.bindInput();
-    this.showTaunt(WOLF_TAUNTS.start);
     this.updateHUD();
 
     this.lastTime = performance.now();
@@ -683,11 +692,11 @@ class VoxelStrongholdGame {
   getStructureDisplayName(st) {
     if (!st) return '建筑';
     const special = {
-      keep: st.team === 'enemy' ? '黑狼主堡' : '狮心主堡',
-      granary: '皇家谷仓',
-      armory: '军械帐篷',
+      keep: st.team === 'enemy' ? '倭寇安宅船寨' : '英桥王氏大宗祠',
+      granary: '永昌义仓',
+      armory: '演武军器厅',
     };
-    return special[st.type] || BUILDINGS[st.type]?.name || '城防建筑';
+    return special[st.type] || BUILDINGS[st.type]?.name || '永昌城防';
   }
 
   findGarrisonableBuildingAt(wx, wz, team) {
@@ -717,7 +726,7 @@ class VoxelStrongholdGame {
     lord.orderTarget = null;
     sfx.playPlaceBlock('stone');
     if (lord.team === 'player') {
-      this.toast(`狮心领主正前往进入【${this.getStructureDisplayName(struct)}】驻防！`);
+      this.toast(`宗长王叔果正前往进驻【${this.getStructureDisplayName(struct)}】督战！`);
     }
   }
 
@@ -739,7 +748,7 @@ class VoxelStrongholdGame {
       this.syncLordGarrisonButton();
       if (!silent) {
         sfx.playPlaceBlock('stone');
-        this.toast(`领主已驻入【${this.getStructureDisplayName(struct)}】，头顶升起王冠！`);
+        this.toast(`宗长王叔果已驻入【${this.getStructureDisplayName(struct)}】，升起永昌鎏金帅印！`);
       }
     }
   }
@@ -765,7 +774,7 @@ class VoxelStrongholdGame {
       this.syncLordGarrisonButton();
       if (!silent) {
         sfx.playPlaceBlock('wood');
-        this.toast('狮心领主已走出建筑，拔剑亲临战场！');
+        this.toast('宗长王叔果已走出建筑，执剑亲率乡兵迎敌！');
       }
     }
   }
@@ -774,13 +783,12 @@ class VoxelStrongholdGame {
     [this.playerLord, this.enemyLord].forEach((lord) => {
       if (lord && lord.hp > 0 && lord.garrisonBuilding === struct) {
         this.exitBuildingWithLord(lord, lord.team === 'enemy' ? struct.x - 2 : struct.x + 2, struct.z, true);
-        // Building collapse bruises the garrisoned Lord slightly without one-shotting him!
         lord.hp = Math.max(180, lord.hp - 120);
         if (lord.team === 'enemy') {
           sfx.playHorn(true);
-          this.showTaunt('黑狼公爵：“主堡虽塌，本公爵犹在！近卫死战到底！！”');
+          this.showTaunt('倭酋黑鲨鬼丸：“安宅巨舰虽毁，本头目尚在！浪人死战到底！！”');
         } else {
-          this.toast('驻防建筑被毁！狮心领主已突围至地面继续作战！');
+          this.toast('驻守建筑受损坍塌！王叔果已突围至地面继续督战！');
         }
       }
       if (lord && lord.pendingEnterBuilding === struct) {
@@ -794,10 +802,10 @@ class VoxelStrongholdGame {
     const btn = document.getElementById('btn-lord-garrison');
     if (!lbl || !btn || !this.playerLord) return;
     if (this.playerLord.garrisonBuilding) {
-      lbl.textContent = '出城';
+      lbl.textContent = '出战';
       btn.className = 'game-btn-wood mini-orb-btn g-txt';
     } else {
-      lbl.textContent = '驻堡';
+      lbl.textContent = '驻祠';
       btn.className = 'game-btn-blue mini-orb-btn g-txt';
     }
   }
@@ -844,22 +852,25 @@ class VoxelStrongholdGame {
     const spec = UNIT_SPECS[role];
     if (!free && team === 'player') {
       if (this.res.peasants < spec.popCost) {
-        this.toast('篝火空闲流民不足！保持谷仓粮食充足即可吸引流民');
+        this.toast('宗祠社火坛待命乡民不足！保持义仓稻米充盈可吸引流民归附');
         return null;
       }
       if (this.getTotalPop() + spec.count > this.res.maxPop) {
-        this.toast('人口已达上限！请建造【木屋民居】扩容');
+        this.toast('丁口已达上限！请增建【江南粉墙民居】扩容');
         return null;
       }
-      for (const [k, v] of Object.entries(spec.cost)) {
+      const discount = (this.clanSteleMartialUnlocked && (role === 'knight' || role === 'swordsman')) ? 0.8 : 1.0;
+      for (const [k, rawV] of Object.entries(spec.cost)) {
+        const v = k === 'gold' ? Math.floor(rawV * discount) : rawV;
         if ((this.res[k] || 0) < v) {
-          const labels = { wood: '木材', stone: '石砖', gold: '金币', bows: '长弓(建制弓坊)', armor: '铁甲(建铁匠铺)' };
+          const labels = { wood: '楠竹杉木', stone: '花岗条石', gold: '饷银', bows: '鸟铳强弩(建神机军器局)', armor: '明光山文甲(建百炼甲仗铺)' };
           this.toast(`缺少 ${labels[k] || k}！需要 ${v}`);
           return null;
         }
       }
       this.res.peasants -= spec.popCost;
-      for (const [k, v] of Object.entries(spec.cost)) {
+      for (const [k, rawV] of Object.entries(spec.cost)) {
+        const v = k === 'gold' ? Math.floor(rawV * discount) : rawV;
         this.res[k] -= v;
       }
       this.syncCampfirePeasants();
@@ -1487,8 +1498,9 @@ class VoxelStrongholdGame {
             this.res.stone += amt;
             this.spawnFloatText(popX, 0.9, popZ, `+${amt} 石`, '#e2e8f0');
           } else if (w.job === 'farm') {
-            this.res.food += 12;
-            this.spawnFloatText(popX, 1.9, popZ, '+12 粮', '#fef08a');
+            const paddyAmt = this.fortressPaddyUnlocked ? 15 : 12;
+            this.res.food += paddyAmt;
+            this.spawnFloatText(popX, 1.9, popZ, `+${paddyAmt} 粮`, '#fef08a');
           } else if (w.job === 'ironMine') {
             this.res.iron += 4;
             this.spawnFloatText(popX, 0.9, popZ, '+4 铁', '#fdba74');
@@ -1498,11 +1510,11 @@ class VoxelStrongholdGame {
           } else if (w.job === 'fletcher' && w.hasCraftMat) {
             this.res.bows += 2;
             w.hasCraftMat = false;
-            this.spawnFloatText(popX, 1.5, popZ, '+2 弓', '#93c5fd');
+            this.spawnFloatText(popX, 1.5, popZ, '+2 铳弓', '#93c5fd');
           } else if (w.job === 'blacksmith' && w.hasCraftMat) {
             this.res.armor += 2;
             w.hasCraftMat = false;
-            this.spawnFloatText(popX, 1.5, popZ, '+2 甲', '#cbd5e1');
+            this.spawnFloatText(popX, 1.5, popZ, '+2 明甲', '#cbd5e1');
           }
 
           this.world.updateStockpileVisuals(this.res);
@@ -1634,12 +1646,18 @@ class VoxelStrongholdGame {
         this.isNight = false;
         this.wave += 1;
         this.phaseTimer = this.dayDuration;
-        this.toast(`☀️ 黎明破晓！成功守住第 ${this.wave - 1} 夜，筹备重甲与投石机反攻敌堡！`);
+        if (!this.clanSteleMartialUnlocked) {
+          this.clanSteleMartialUnlocked = true;
+          sfx.playScan();
+          this.toast('📜 击退首夜倭袭！点亮王氏家风碑【文武世泽·武状元王名世】（铁骑/藤牌募饷 -20%）！');
+        } else {
+          this.toast(`☀️ 海日破晓！永昌堡守住第 ${this.wave - 1} 夜，速铸佛郎机与虎蹲炮荡平东海倭寨！`);
+        }
       }
     }
   }
 
-  // Multi-Lane Stronghold Siege Waves: Main Grand Bridge + Northern Smuggler's Ford Flanking!
+  // Multi-Lane Anti-Wokou Siege Waves: Central River Ford + Northern Creek Flanking!
   triggerNightSiege() {
     this.isNight = true;
     this.phaseTimer = this.nightDuration;
@@ -1660,7 +1678,11 @@ class VoxelStrongholdGame {
       this.createSquad('swordsman', 'enemy', mainGateOut.x, mainGateOut.z + 1.5, true);
       this.createSquad('spearman', 'enemy', northFlankEntry.x, northFlankEntry.z, true);
     } else if (w === 3) {
-      this.showTaunt(WOLF_TAUNTS.wave3);
+      if (this.fortressPaddyUnlocked) {
+        this.showTaunt('【史载·困城观稼】倭寇登台窥见永昌堡内水田稻浪井然，军心震骇！我军全员战力提升！');
+      } else {
+        this.showTaunt(WOLF_TAUNTS.wave3);
+      }
       const eastBank = gridToWorld(38, 20);
       this.createSquad('trebuchet', 'enemy', eastBank.x, eastBank.z, true);
       this.createSquad('swordsman', 'enemy', mainGateOut.x, mainGateOut.z - 1.5, true);
@@ -1678,7 +1700,8 @@ class VoxelStrongholdGame {
 
   updateCombat(dt) {
     this.refreshFlowFields(dt);
-    const moraleMult = this.taxPolicy === 'generous' ? 1.2 : (this.taxPolicy === 'harsh' ? 0.9 : 1.0);
+    const paddyBoost = this.fortressPaddyUnlocked ? 1.15 : 1.0;
+    const moraleMult = (this.taxPolicy === 'generous' ? 1.2 : (this.taxPolicy === 'harsh' ? 0.92 : 1.0)) * paddyBoost;
 
     // 1. Update Portcullis Gates (opens for friendly troops AND gatherer workers/ox-carts!) & Ballistas
     for (const s of this.world.structures) {
@@ -2013,7 +2036,8 @@ class VoxelStrongholdGame {
           if (u.atkTimer <= 0) {
             u.atkTimer = u.cooldown;
             u.swingTimer = 0.28;
-            nearEnemy.hp -= u.dmg * (u.team === 'player' ? moraleMult : 1.0);
+            const langxianBonus = (u.team === 'player' && u.role === 'spearman' && !nearEnemy.isRanged && !nearEnemy.isSiege) ? 1.25 : 1.0;
+            nearEnemy.hp -= u.dmg * (u.team === 'player' ? moraleMult : 1.0) * langxianBonus;
             this.debris.burst((u.x + nearEnemy.x) * 0.5, u.y + 0.55, (u.z + nearEnemy.z) * 0.5, 0xffaa00, 4, 0.52, 0.09);
             sfx.playHit();
           }
@@ -2516,20 +2540,21 @@ class VoxelStrongholdGame {
     }
     if (any) {
       sfx.playFireIgnite();
-      this.toast('🔥 古石桥前沥青火油沟全线爆燃！！');
+      this.toast('🔥 城前猛火油伏火壕全线轰燃，烈焰阻断倭寇！！');
     } else {
-      this.toast('地面暂无未引燃的【沥青火油沟】，可在城防栏涂抹铺设！');
+      this.toast('地面暂无未引燃的【猛火油伏火壕】，可在永昌城防栏铺设！');
     }
   }
 
   repairAllWalls() {
     let repaired = 0;
+    const freeEveryTwo = this.clanSteleWallsUnlocked;
     for (const s of this.world.structures) {
-      if (s.team === 'player' && s.hp > 0 && s.hp < s.maxHp && ['wall', 'tower', 'gate'].includes(s.type)) {
-        if (this.res.stone >= 1) {
-          this.res.stone -= 1;
+      if (s.team === 'player' && s.hp > 0 && s.hp < s.maxHp && ['wall', 'tower', 'gate', 'ballista'].includes(s.type)) {
+        const needStone = (freeEveryTwo && repaired % 2 === 1) ? 0 : 1;
+        if (this.res.stone >= needStone) {
+          this.res.stone -= needStone;
           s.hp = s.maxHp;
-          if (s.mesh.userData.mainMesh) s.mesh.userData.mainMesh.material = this.mats.stoneLight;
           repaired++;
         }
       }
@@ -2537,46 +2562,97 @@ class VoxelStrongholdGame {
     if (repaired > 0) {
       sfx.playPlaceBlock('stone');
       this.world.updateStockpileVisuals(this.res);
-      this.toast(`🔨 已消耗 ${repaired} 石砖修复受损城墙与角楼！`);
+      this.toast(`🔨 永昌工匠已修缮 ${repaired} 处受损花岗城垣与敌台！`);
     } else {
-      this.toast('当前没有受损城墙，或石砖不足');
+      this.toast('当前没有受损城防，或花岗条石不足');
+    }
+  }
+
+  // Scout Patrol Inspection (`斥候巡防`): Checks breach paths from East Ford & North Ford to the Wang Ancestral Hall!
+  runScoutPatrolCheck() {
+    sfx.playScan();
+    this.scoutLines.forEach((sl) => this.scene.remove(sl.mesh));
+    this.scoutLines = [];
+
+    const goal = this.world.playerKeep || { x: -22, z: 0 };
+    const probes = [
+      { label: '东门迎川道', start: gridToWorld(35, 20), col: 0xfacc15 },
+      { label: '北湾环海道', start: gridToWorld(33, 10), col: 0xf97316 },
+    ];
+    const openLanes = [];
+
+    probes.forEach((pr) => {
+      const wps = this.pathfinder.findPathWorld(this.world, pr.start.x, pr.start.z, goal.x + 1.4, goal.z, 'enemy', {
+        peaceful: true,
+      });
+      if (wps && wps.length > 1) {
+        const last = wps[wps.length - 1];
+        const distToKeep = Math.hypot(last.x - (goal.x + 1.4), last.z - goal.z);
+        if (distToKeep < 2.3) openLanes.push(pr.label);
+
+        const pts3D = wps.map((p) => new THREE.Vector3(p.x, this.world.getElevationAtWorld(p.x, p.z) + 0.24, p.z));
+        const curve = new THREE.CatmullRomCurve3(pts3D);
+        const tubeGeo = new THREE.TubeGeometry(curve, Math.min(64, pts3D.length * 4), 0.075, 5, false);
+        const tubeMat = new THREE.MeshBasicMaterial({
+          color: distToKeep < 2.3 ? 0xf59e0b : 0x4ade80,
+          transparent: true,
+          opacity: 0.88,
+          depthWrite: false,
+        });
+        const mesh = new THREE.Mesh(tubeGeo, tubeMat);
+        mesh.userData.noOutline = true;
+        this.scene.add(mesh);
+        this.scoutLines.push({ mesh, life: 4.5, maxLife: 4.5 });
+      }
+    });
+
+    const farms = this.world.structures.filter((s) => s.team === 'player' && s.type === 'farm' && s.hp > 0).length;
+    const paddyHint = farms < 3 ? `（另：堡内再垦 ${3 - farms} 块水田即可触发【堡内有田】耕战增益）` : '（堡内水田充盈，粮道无忧）';
+
+    if (openLanes.length > 0) {
+      this.showTaunt(`【永昌斥候禀报】${openLanes.join('、')}尚有缺口直通王氏大宗祠！请速筑花岗城墙与谯楼铁闸封堵${paddyHint}`);
+    } else {
+      this.showTaunt(`【永昌斥候禀报】四门石垣与铁闸已形成严密合围！可在城前增设空心敌台与猛火油伏火壕聚歼来犯倭寇${paddyHint}`);
     }
   }
 
   triggerRewardedAd(kind) {
     const modal = document.getElementById('ad-modal');
     const titleEl = document.getElementById('ad-title');
+    const descEl = document.getElementById('ad-desc');
     const barEl = document.getElementById('ad-progress-fill');
     const skipBtn = document.getElementById('ad-claim-btn');
 
     if (kind === 'airdrop') {
       if (this.airdropsUsed >= 2) {
-        this.toast('本局皇家空投补给次数已达上限 (2/2)');
+        this.toast('本局英桥王氏合族义捐已尽数调拨 (2/2)');
         return;
       }
-      titleEl.textContent = '🎁 皇家热气球紧急物资空投 (模拟激励视频 2s)';
+      titleEl.textContent = '📜 英桥王氏 · 合族输财助边';
+      if (descEl) descEl.textContent = '王叔果、王叔杲兄弟毁家纾难，四乡王氏族人正将楠竹杉木、大罗山条石与军饷运抵宗祠！';
     } else {
-      titleEl.textContent = '🛡️ 狮心王圣殿禁卫军驰援 (模拟激励视频 2s)';
+      titleEl.textContent = '🔥 烽火传讯 · 戚家军精锐驰援';
+      if (descEl) descEl.textContent = '永昌空心敌台狼烟升腾，浙南抗倭义军铁骑与温州藤牌营正星夜驰援大宗祠！';
     }
 
     modal.classList.remove('hidden');
     barEl.style.width = '0%';
     skipBtn.disabled = true;
-    skipBtn.textContent = '正在播放激励广告...';
+    skipBtn.textContent = '义军粮械集结中...';
 
     const prevScale = this.timeScale;
     this.timeScale = 0;
 
     let p = 0;
     const iv = setInterval(() => {
-      p += 25;
+      p += 50;
       barEl.style.width = `${Math.min(100, p)}%`;
       if (p >= 100) {
         clearInterval(iv);
         skipBtn.disabled = false;
-        skipBtn.textContent = '✅ 立即领取支援！';
+        skipBtn.textContent = '✅ 开门接应义捐粮械！';
       }
-    }, 350);
+    }, 220);
 
     skipBtn.onclick = () => {
       clearInterval(iv);
@@ -2585,21 +2661,21 @@ class VoxelStrongholdGame {
 
       if (kind === 'airdrop') {
         this.airdropsUsed++;
-        this.res.wood += 50;
-        this.res.stone += 45;
-        this.res.gold += 110;
+        this.res.wood += 55;
+        this.res.stone += 50;
+        this.res.gold += 120;
         this.res.oil += 10;
         this.world.updateStockpileVisuals(this.res);
-        this.debris.burst(this.world.campfirePos.x, this.world.campfirePos.y + 2.2, this.world.campfirePos.z, 0xfacc15, 24, 1.1, 0.25);
+        this.debris.burst(this.world.campfirePos.x, this.world.campfirePos.y + 2.0, this.world.campfirePos.z, 0xfacc15, 20, 1.0, 0.22);
         sfx.playHorn(false);
-        this.toast('🎁 空投送达！木+50 石+45 金+110 火油+10');
+        this.toast('📜 宗族义捐运抵！竹木+55 条石+50 饷银+120 火油+10');
       } else if (kind === 'guard') {
         this.emergencyGuardUsed = true;
         this.createSquad('knight', 'player', this.world.playerKeep.x + 2.5, this.world.playerKeep.z - 1.5, true);
         this.createSquad('swordsman', 'player', this.world.playerKeep.x + 2.5, this.world.playerKeep.z + 1.5, true);
-        if (this.playerLord) this.playerLord.hp = Math.min(this.playerLord.maxHp, this.playerLord.hp + 550);
+        if (this.playerLord) this.playerLord.hp = Math.min(this.playerLord.maxHp, this.playerLord.hp + 580);
         sfx.playHorn(true);
-        this.toast('🛡️ 狮心王禁卫军已降临高地主堡！');
+        this.toast('🛡️ 浙南抗倭铁骑与藤牌营已抵达王氏宗祠护驾！');
       }
       this.updateHUD();
     };
@@ -2611,14 +2687,18 @@ class VoxelStrongholdGame {
     if (victory) sfx.playHorn(true);
     else sfx.playBell();
 
+    const fortCount = this.world.structures.filter((s) => s.team === 'player' && ['wall', 'tower', 'gate', 'ballista'].includes(s.type)).length;
+    const farmCount = this.world.structures.filter((s) => s.team === 'player' && s.type === 'farm').length;
     const modal = document.getElementById('gameover-modal');
     document.getElementById('go-title').textContent = victory
-      ? '👑 史诗凯旋！！黑狼双层巨堡已被攻陷！'
-      : '💀 高地主堡陷落... 领主战死沙场';
+      ? '🏯 海波平定 · 永昌千秋！！'
+      : '💀 宗祠失守 · 戊午泣血...';
     document.getElementById('go-desc').textContent = victory
-      ? `你在第 ${this.wave} 天成功跨过三孔石拱桥，连破外瓮城与内城王座斩首黑狼公爵！获得【十字军荣誉纹章 ×50】（第二阵营「唐宋边塞瓮城」解锁进度 +25%）`
-      : '防线失守！提示：可在北侧峡谷浅滩拉一道短墙防绕后，并在中央石桥西侧铺满沥青火沟！';
+      ? `嘉靖戊午大捷！你在第 ${this.wave} 幕率永昌义军渡河焚毁东海倭寇安宅巨舰，斩首倭酋黑鲨鬼丸！本局共筑城垣敌台 ${fortCount} 座、开垦堡内水田 ${farmCount} 亩、护佑乡民丁口 ${this.getTotalPop()} 人，英桥王氏「守望相助、保境安民」家风永载史册！`
+      : '永昌防线被破！兵法建言：可在东渡口与北湾水道筑起花岗城墙与双格谯楼城门，并在城内开垦3块水田实现耕战自给！';
     modal.classList.remove('hidden');
+    const toMenuBtn = document.getElementById('btn-gameover-menu');
+    if (toMenuBtn) toMenuBtn.classList.remove('hidden');
   }
 
   bindUI() {
@@ -2698,15 +2778,15 @@ class VoxelStrongholdGame {
       if (this.stance === 'attack') {
         stanceLbl.textContent = '总攻!';
         sfx.playHorn(false);
-        this.toast('全军总攻！！渡过河湾浅滩，踏平东山黑狼要塞！');
+        this.toast('全军总攻！！渡过河湾浅滩，焚毁东海倭寇安宅船寨！');
         this.camDesiredTarget.set(10, 0.6, 0.2);
       } else if (this.stance === 'sally') {
         stanceLbl.textContent = '迎击';
         sfx.playHorn(false);
-        this.toast('出城迎击！主动清剿河岸敌方攻城器！');
+        this.toast('出城迎击！主动清剿河岸倭寇攻城器！');
       } else {
         stanceLbl.textContent = '固守';
-        this.toast('全军固守领地防线！');
+        this.toast('全军固守永昌卫城防线！');
       }
     });
 
@@ -2734,14 +2814,25 @@ class VoxelStrongholdGame {
       const order = ['balanced', 'harsh', 'generous'];
       this.taxPolicy = order[(order.indexOf(this.taxPolicy) + 1) % order.length];
       const names = {
-        balanced: '平税',
-        harsh: '重税++',
-        generous: '双粮士气',
+        balanced: '耕读',
+        harsh: '纾难',
+        generous: '赈乡',
+      };
+      const policyTips = {
+        balanced: '📜 切换宗族乡约：【耕读传家】（赋饷均衡，丁口稳步归附）',
+        harsh: '📜 切换宗族乡约：【毁家纾难】（合族捐输饷银翻倍，乡民归附放缓）',
+        generous: '📜 切换宗族乡约：【义仓赈乡】（开仓双粮赈济，全军抗倭士气战力 +20%！）',
       };
       const lbl = document.getElementById('tax-lbl');
       if (lbl) lbl.textContent = names[this.taxPolicy];
       sfx.playPlaceBlock('wood');
+      this.toast(policyTips[this.taxPolicy]);
     });
+
+    const scoutBtn = document.getElementById('btn-scout-check');
+    if (scoutBtn) {
+      scoutBtn.addEventListener('click', () => this.runScoutPatrolCheck());
+    }
 
     document.getElementById('btn-ignite').addEventListener('click', () => this.manualIgniteAllPitch());
     document.getElementById('btn-repair').addEventListener('click', () => this.repairAllWalls());
@@ -2763,11 +2854,11 @@ class VoxelStrongholdGame {
       e.currentTarget.textContent = this.timeScale === 2 ? '2x' : '1x';
     });
 
-    // Camera Zone Cycle Orb (Home Keep -> River Ford -> Enemy Stronghold) + 90° Rotate!
+    // Camera Zone Cycle Orb (Yongchang Fortress -> River Ford -> Wokou Stronghold) + 90° Rotate!
     const zones = [
-      { lbl: '内城', x: -19.5, y: 0.5, z: 0.0 },
+      { lbl: '永昌', x: -19.5, y: 0.5, z: 0.0 },
       { lbl: '渡口', x: -1.5, y: 0.2, z: 0.8 },
-      { lbl: '敌堡', x: 19.5, y: 0.7, z: 0.0 },
+      { lbl: '倭寨', x: 19.5, y: 0.7, z: 0.0 },
     ];
     document.getElementById('btn-cam-cycle').addEventListener('click', () => {
       this.camZoneIdx = (this.camZoneIdx + 1) % zones.length;
@@ -2781,11 +2872,18 @@ class VoxelStrongholdGame {
     window.addEventListener('keydown', (e) => {
       if (e.key === 'q' || e.key === 'Q') this.camDesiredYaw -= Math.PI / 4;
       if (e.key === 'e' || e.key === 'E') this.camDesiredYaw += Math.PI / 4;
+      if (e.key === 't' || e.key === 'T') this.runScoutPatrolCheck();
       if ((e.key === 'r' || e.key === 'R') && this.selectedBuild) {
         this.rotateBuildDirection();
       }
-      if (e.key === 'Escape' && this.selectedBuild) {
-        this.selectBuildTool(null);
+      if (e.key === 'Escape') {
+        if (this.selectedBuild) {
+          this.selectBuildTool(null);
+        } else if (this.menuState === 'play') {
+          this.togglePause(true);
+        } else if (this.menuState === 'pause' && document.getElementById('info-panel').classList.contains('hidden')) {
+          this.togglePause(false);
+        }
       }
     });
 
@@ -2855,9 +2953,225 @@ class VoxelStrongholdGame {
     document.getElementById('btn-ad-airdrop').addEventListener('click', () => this.triggerRewardedAd('airdrop'));
     document.getElementById('btn-restart').addEventListener('click', () => window.location.reload());
     document.getElementById('btn-double-medal').addEventListener('click', (e) => {
-      e.currentTarget.textContent = '🎉 已双倍领取【十字军纹章 ×100】！';
+      e.currentTarget.textContent = '📜 已镌刻入《英桥王氏抗倭守望碑》！';
       e.currentTarget.disabled = true;
     });
+  }
+
+  // =====================================================================
+  // TITLE SCREEN / MAIN MENU / PAUSE MENU CONTROLLER
+  // =====================================================================
+  bindMenus() {
+    const $ = (id) => document.getElementById(id);
+    this.el = {
+      title: $('title-screen'),
+      titleShowcase: $('title-showcase'),
+      titleEnter: $('btn-title-enter'),
+      mainMenu: $('main-menu'),
+      menuHeadSub: $('menu-head-sub'),
+      pause: $('pause-menu'),
+      info: $('info-panel'),
+      infoTitle: $('info-title'),
+      infoBody: $('info-body'),
+      soundLbl: $('sound-lbl'),
+      soundWaves: $('sound-waves'),
+    };
+
+    // Decorate the title with live 3D icons rendered by the icon studio (same assets as the card tray).
+    if (this.el.titleShowcase && this.icons) {
+      const picks = [
+        this.icons.units?.knight,
+        this.icons.buildings?.tower,
+        this.icons.units?.trebuchet,
+        this.icons.buildings?.gate,
+      ].filter(Boolean);
+      picks.forEach((src, i) => {
+        const img = document.createElement('img');
+        img.className = 'show-ico';
+        img.src = src;
+        img.alt = '';
+        img.style.setProperty('--delay', `${-i * 0.6}s`);
+        this.el.titleShowcase.appendChild(img);
+      });
+    }
+
+    this.el.titleEnter.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.enterFromTitle();
+    });
+    this.el.title.addEventListener('click', () => this.enterFromTitle());
+
+    $('btn-menu-start').addEventListener('click', () => this.startGameFromMenu());
+    $('btn-menu-controls').addEventListener('click', () => this.openInfo('controls'));
+    // index.html labels this entry「王氏族谱与堡志」; it opens the gameplay guide panel.
+    const clanBtn = $('btn-menu-clan') || $('btn-menu-guide');
+    if (clanBtn) clanBtn.addEventListener('click', () => this.openInfo('guide'));
+    $('btn-menu-sound').addEventListener('click', () => {
+      sfx.enabled = !sfx.enabled;
+      if (sfx.enabled) {
+        sfx.init();
+        sfx.playPlaceBlock('wood');
+      }
+      this.syncSoundLabel();
+    });
+    $('btn-menu-back-title').addEventListener('click', () => this.showTitle());
+
+    $('btn-pause-resume').addEventListener('click', () => this.togglePause(false));
+    const pauseClanBtn = $('btn-pause-clan');
+    if (pauseClanBtn) pauseClanBtn.addEventListener('click', () => this.openInfo('guide'));
+    $('btn-pause-controls').addEventListener('click', () => this.openInfo('controls'));
+    $('btn-pause-mainmenu').addEventListener('click', () => this.returnToMainMenu());
+
+    $('btn-info-close').addEventListener('click', () => this.closeInfo());
+    this.el.info.addEventListener('click', (e) => {
+      if (e.target === this.el.info) this.closeInfo();
+    });
+
+    // Game-over modal: "返回主菜单" reloads straight into the main menu (skips title).
+    const goMenuBtn = $('btn-gameover-menu');
+    if (goMenuBtn) {
+      goMenuBtn.addEventListener('click', () => {
+        try { sessionStorage.setItem('voxel-stronghold.skipTitle', '1'); } catch (err) { /* storage unavailable */ }
+        window.location.reload();
+      });
+    }
+
+    // Boot path: when returning from a finished match we land on the main menu instead of the title.
+    let skipTitle = false;
+    try { skipTitle = sessionStorage.getItem('voxel-stronghold.skipTitle') === '1'; } catch (err) { /* ignore */ }
+    if (skipTitle) {
+      try { sessionStorage.removeItem('voxel-stronghold.skipTitle'); } catch (err) { /* ignore */ }
+      this.menuState = 'main';
+    }
+
+    this.syncSoundLabel();
+    this.applyMenuState();
+  }
+
+  applyMenuState() {
+    const s = this.menuState;
+    this.el.title.classList.toggle('hidden', s !== 'title');
+    this.el.mainMenu.classList.toggle('hidden', s !== 'main');
+    this.el.pause.classList.toggle('hidden', s !== 'pause');
+    if (s !== 'pause' && s !== 'main') this.closeInfo();
+    // Hide the in-game HUD chrome while a full-screen shell is up so it never bleeds through.
+    const hideHud = s !== 'play' && s !== 'pause';
+    for (const id of ['top-hud', 'left-thumb-stamps', 'right-thumb-wheel', 'card-tray-drawer', 'active-build-floating']) {
+      const el = document.getElementById(id);
+      if (el) el.style.visibility = hideHud ? 'hidden' : '';
+    }
+    if (this.el.menuHeadSub) {
+      const dayLabel = this.isNight ? `第 ${this.wave} 幕 · 倭寇夜袭` : `嘉靖戊午 · 第 ${this.wave} 幕备战`;
+      this.el.menuHeadSub.textContent = `${dayLabel} · 倭船游弋东海，永昌宗族乡勇整备中`;
+    }
+  }
+
+  enterFromTitle() {
+    if (this.menuState !== 'title') return;
+    sfx.init();
+    sfx.playHorn(false);
+    this.menuState = 'main';
+    this.applyMenuState();
+  }
+
+  showTitle() {
+    this.menuState = 'title';
+    this.applyMenuState();
+  }
+
+  startGameFromMenu() {
+    this.menuState = 'play';
+    this.applyMenuState();
+    sfx.init();
+    sfx.playHorn(false);
+    if (this.pendingIntroTaunt) {
+      this.pendingIntroTaunt = false;
+      this.showTaunt(WOLF_TAUNTS.start);
+    }
+  }
+
+  togglePause(open) {
+    if (open) {
+      if (this.menuState !== 'play' || this.gameOver) return;
+      this.selectBuildTool(null);
+      this.setTrayMode(null);
+      this.menuState = 'pause';
+    } else {
+      if (this.menuState !== 'pause') return;
+      this.closeInfo();
+      this.menuState = 'play';
+    }
+    this.applyMenuState();
+  }
+
+  returnToMainMenu() {
+    // The running match cannot be rewound safely (workers, squads, debris), so reload and
+    // let the boot path skip the title screen when the flag is present.
+    try { sessionStorage.setItem('voxel-stronghold.skipTitle', '1'); } catch (err) { /* ignore */ }
+    window.location.reload();
+  }
+
+  syncSoundLabel() {
+    if (this.el.soundLbl) this.el.soundLbl.textContent = sfx.enabled ? '已开启' : '已静音';
+    if (this.el.soundWaves) this.el.soundWaves.style.opacity = sfx.enabled ? '1' : '0.25';
+  }
+
+  openInfo(kind) {
+    this.infoReturnState = this.menuState;
+    this.infoKind = kind;
+    const body = this.el.infoBody;
+    if (kind === 'controls') {
+      this.el.infoTitle.textContent = '营造与兵法 · 操作说明';
+      body.innerHTML = `
+        <h4>筑城与委任</h4>
+        <ul>
+          <li>左下角「筑城」/「募兵」打开卡牌托盘；点选卡牌后托盘自动收起，腾出整屏触控空间。</li>
+          <li>建造模式下<b>点击地面</b>放置，<b>按住拖拽</b>沿直线连建石墙 / 铺设火油沟；城门与敌台只能单点放置。</li>
+          <li>右下角浮动条的「转向」或 <kbd>R</kbd> 可将建筑顺时针旋转 90°。</li>
+          <li>拖拽<b>宗长</b>到任意我方建筑即可入驻（头顶升起宗祠印记）；拖到空地则出阵督战。</li>
+          <li>拖拽<b>小队旗帜</b>下达军令；鸟铳手拖到城墙 / 敌台附近会自动登墙驻守。</li>
+        </ul>
+        <h4>镜头</h4>
+        <ul>
+          <li><b>右键拖拽</b>平移镜头；<b>右键单击</b>（未拖动）退出建造模式。</li>
+          <li><b>滚轮</b>缩放；移动端<b>双指捏合</b>缩放、双指拖动平移。</li>
+          <li><kbd>Q</kbd> / <kbd>E</kbd> 旋转视角 45°；右下角罗盘按钮轮切战区。</li>
+        </ul>
+        <h4>快捷键</h4>
+        <ul>
+          <li><kbd>Esc</kbd> 退出建造模式；无建造工具时打开 / 关闭暂停菜单。</li>
+          <li><kbd>F2</kbd> 或 <kbd>\`</kbd> 开关 QA 调试面板；连点左上角盾徽 3 次亦可。</li>
+          <li>左上角盾徽单击：镜头回到宗长身边。</li>
+        </ul>
+      `;
+    } else {
+      const s2 = this.clanSteleWallsUnlocked ? '✅ 已点亮（城防耐久+15%，修城减半耗石）' : '⏳ 待解锁（累计修筑10座城垣/敌台/城门）';
+      const s3 = this.clanSteleMartialUnlocked ? '✅ 已点亮（宗族铁骑/藤牌募饷 -20%）' : '⏳ 待解锁（击退首幕倭寇夜袭）';
+      const s4 = this.fortressPaddyUnlocked ? '✅ 已达成（稻谷产率+25%，全军士气+15%）' : '⏳ 待达成（堡内开垦3块江南水车稻田）';
+      this.el.infoTitle.textContent = '英桥王氏族谱与永昌堡志';
+      body.innerHTML = `
+        <h4>一、抗倭叙事 · 嘉靖戊午保卫战（1558）</h4>
+        <p>明嘉靖三十一年至三十七年，温州永嘉场屡遭东海倭寇劫掠，英桥王氏族长<b>王沛</b>、名将<b>王德</b>叔侄先后壮烈殉国。王叔果、王叔杲兄弟遂倡议合族集资筑起<b>永昌堡</b>，南北长二百六十八丈、引河水入护城壕与城内水渠，护佑一方百姓数百年。</p>
+        <h4>二、永昌城防 · 明代海防卫城规制</h4>
+        <ul>
+          <li><b>斜垒花岗城垣与空心敌台</b>：条石收分斜筑，神机鸟铳手登墙驻防射程大增；空心敌台可发射火箭引燃城前<b>猛火油伏火壕</b>。</li>
+          <li><b>重檐谯楼城门与佛郎机炮台</b>：双身位石拱城门对我方乡民水牛车及虎蹲炮自动启闭，对倭寇千斤闸落锁；八角炮台优先轰击大筒与冲车。</li>
+          <li><b>斥候巡防（快捷键 T）</b>：派遣塘骑勘验东门迎川道与北湾环海道，即时标示防线缺口或合围状态。</li>
+        </ul>
+        <h4>三、家族传承 · 《英桥王氏家风碑》实时进度</h4>
+        <ul>
+          <li><b>【先烈忠魂 · 王沛王德】</b>：✅ 已铭刻 —— 宗长王叔果亲驻祠堂或敌台督战，自动恢复气血并射击来犯倭寇。</li>
+          <li><b>【双贤筑堡 · 王叔果王叔杲】</b>：${s2}</li>
+          <li><b>【文武世泽 · 武状元王名世】</b>：${s3}</li>
+          <li><b>【堡内有田 · 围困不惊】</b>：${s4}</li>
+        </ul>
+      `;
+    }
+    this.el.info.classList.remove('hidden');
+  }
+
+  closeInfo() {
+    if (this.el.info) this.el.info.classList.add('hidden');
   }
 
   renderBuildBar(cat) {
@@ -2891,10 +3205,10 @@ class VoxelStrongholdGame {
     bar.innerHTML = '';
     Object.entries(UNIT_SPECS).forEach(([key, spec]) => {
       const costText = Object.entries(spec.cost)
-        .map(([k, v]) => `${{ wood: '木', stone: '石', gold: '金', bows: '弓', armor: '甲' }[k] || k}${v}`)
+        .map(([k, v]) => `${{ wood: '木', stone: '石', gold: '饷', bows: '铳', armor: '甲' }[k] || k}${v}`)
         .join(' ');
       let badgeHtml = '';
-      if (spec.cost.bows) badgeHtml = `<span class="stock-corner-badge">弓:${Math.floor(this.res.bows)}</span>`;
+      if (spec.cost.bows) badgeHtml = `<span class="stock-corner-badge">铳:${Math.floor(this.res.bows)}</span>`;
       else if (spec.cost.armor) badgeHtml = `<span class="stock-corner-badge">甲:${Math.floor(this.res.armor)}</span>`;
 
       const card = document.createElement('button');
@@ -3320,11 +3634,11 @@ class VoxelStrongholdGame {
       if (!this.world.canPlace(type, gx, gz, this.buildRotSteps)) {
         if (coords.length === 1 && spec.reqBiome) {
           const hintMap = {
-            limestone: '北山发光灰白【石灰岩矿带】',
-            iron: '南山发光赤褐【铁矿脉】',
-            pitchBog: '河湾发光【黑油沼泽】',
+            limestone: '北麓大罗山【花岗岩矿带】',
+            iron: '南麓发光赤褐【赤铁矿脉】',
+            pitchBog: '河湾发光【猛火油泉湿地】',
           };
-          this.toast(`⚠️ 【${spec.name}】必须建在 ${hintMap[spec.reqBiome] || '对应资源带'} 绿色高亮格上！`);
+          this.toast(`⚠️ 【${spec.name}】须建在 ${hintMap[spec.reqBiome] || '对应资源带'} 绿色高亮格上！`);
         }
         continue;
       }
@@ -3355,7 +3669,7 @@ class VoxelStrongholdGame {
         if ((this.res[k] || 0) < v) affordable = false;
       }
       if (!affordable) {
-        this.toast(`资源不足以建造【${spec.name}】！可点左侧空投箱获取补给`);
+        this.toast(`物资不足以营造【${spec.name}】！可点左上「义捐」筹集宗族助饷`);
         break;
       }
 
@@ -3366,13 +3680,17 @@ class VoxelStrongholdGame {
       if (type === 'pitch') {
         this.world.placePitch(gx, gz);
       } else {
-        this.world.placeStructure(type, gx, gz, 'player', false, this.buildRotSteps);
+        const built = this.world.placeStructure(type, gx, gz, 'player', false, this.buildRotSteps);
+        if (built && this.clanSteleWallsUnlocked && ['wall', 'tower', 'gate', 'ballista'].includes(type)) {
+          built.maxHp = Math.round(built.maxHp * 1.15);
+          built.hp = built.maxHp;
+        }
         if (type === 'hovel') this.res.maxPop += 8;
         if (
           ['woodcutter', 'quarry', 'farm', 'ironMine', 'pitchRig', 'fletcher', 'blacksmith'].includes(type) &&
           this.res.peasants <= 0
         ) {
-          this.toast(`已建成【${spec.name}】，等待篝火空闲农夫前往上岗！`);
+          this.toast(`已建成【${spec.name}】，等待社火坛空闲乡民前往上岗！`);
         }
       }
       placedCount++;
@@ -3383,6 +3701,30 @@ class VoxelStrongholdGame {
       this.world.updateStockpileVisuals(this.res);
       if (this.selectedBuild && spec.reqBiome) {
         this.world.showBiomeHints(this.selectedBuild);
+      }
+      if (!this.clanSteleWallsUnlocked) {
+        const fortCount = this.world.structures.filter(
+          (s) => s.team === 'player' && s.hp > 0 && ['wall', 'tower', 'gate', 'ballista'].includes(s.type)
+        ).length;
+        if (fortCount >= 10) {
+          this.clanSteleWallsUnlocked = true;
+          this.world.structures.forEach((s) => {
+            if (s.team === 'player' && s.hp > 0 && ['wall', 'tower', 'gate', 'ballista'].includes(s.type)) {
+              s.maxHp = Math.round(s.maxHp * 1.15);
+              s.hp = Math.min(s.maxHp, Math.round(s.hp * 1.15));
+            }
+          });
+          sfx.playScan();
+          this.toast('📜 永昌城垣初具规模！点亮家风碑【双贤筑堡·王叔果王叔杲】（城防耐久+15%，修城省石）！');
+        }
+      }
+      if (!this.fortressPaddyUnlocked) {
+        const paddyCount = this.world.structures.filter((s) => s.team === 'player' && s.hp > 0 && s.type === 'farm').length;
+        if (paddyCount >= 3) {
+          this.fortressPaddyUnlocked = true;
+          sfx.playScan();
+          this.toast('🌾 达成永昌史实【堡内有田·围困不惊】！水田产粮+25%，全军士气战力+15%！');
+        }
       }
       // Keep build mode active for ALL buildings so player can continuously place & rotate!
       this.updateHUD();
@@ -3414,13 +3756,13 @@ class VoxelStrongholdGame {
 
     const stockPill = document.getElementById('armory-stock-pill');
     if (stockPill) {
-      stockPill.textContent = `军械库存：弓${Math.floor(this.res.bows)} · 甲${Math.floor(this.res.armor)} · 铁${Math.floor(this.res.iron)} · 油${Math.floor(this.res.oil)}`;
+      stockPill.textContent = `演武军备：铳弓${Math.floor(this.res.bows)} · 明甲${Math.floor(this.res.armor)} · 生铁${Math.floor(this.res.iron)} · 火油${Math.floor(this.res.oil)}`;
     }
 
     if (this.devMode) {
       document.getElementById('dev-fps').textContent = `FPS: ${Math.round(this.fpsSmoothed)}`;
       document.getElementById('dev-draws').textContent = `Draws: ${this.renderer.info.render.calls}`;
-      document.getElementById('voxel-stat').textContent = `实时微体素: ${this.world.totalVoxelCount.toLocaleString()}`;
+      document.getElementById('voxel-stat').textContent = `低模三角面: ${this.world.totalVoxelCount.toLocaleString()}`;
       const navEl = document.getElementById('dev-nav');
       if (navEl) {
         const audit = this.runNavAudit ? this.runNavAudit() : null;
@@ -3434,10 +3776,10 @@ class VoxelStrongholdGame {
     const ss = String(secs % 60).padStart(2, '0');
     const timerBadge = document.getElementById('wave-timer');
     if (this.isNight) {
-      timerBadge.textContent = `第${this.wave}夜 · 敌袭 ${mm}:${ss}`;
+      timerBadge.textContent = `第${this.wave}幕 · 倭袭 ${mm}:${ss}`;
       timerBadge.className = 'wave-banner night g-txt';
     } else {
-      timerBadge.textContent = `第${this.wave}天 · 备战 ${mm}:${ss}`;
+      timerBadge.textContent = `第${this.wave}幕 · 备战 ${mm}:${ss}`;
       timerBadge.className = secs <= 12 ? 'wave-banner urgent g-txt' : 'wave-banner day g-txt';
     }
 
@@ -3602,7 +3944,7 @@ class VoxelStrongholdGame {
           ctx.textBaseline = 'bottom';
           ctx.lineWidth = 3;
           ctx.strokeStyle = '#291507';
-          const tag = hasPlayerLord ? '狮心王驻防' : '黑狼公驻防';
+          const tag = hasPlayerLord ? '王叔果驻防' : '黑鲨酋驻防';
           ctx.strokeText(tag, crownScr.sx, crownScr.sy);
           ctx.fillStyle = hasPlayerLord ? '#fde047' : '#fca5a5';
           ctx.fillText(tag, crownScr.sx, crownScr.sy);
@@ -3636,7 +3978,7 @@ class VoxelStrongholdGame {
         ctx.textBaseline = 'bottom';
         ctx.lineWidth = 3;
         ctx.strokeStyle = '#291507';
-        const name = u.team === 'enemy' ? '黑狼公爵' : '狮心领主';
+        const name = u.team === 'enemy' ? '倭酋·黑鲨鬼丸' : '宗长·王叔果';
         ctx.strokeText(name, scr.sx, scr.sy);
         ctx.fillStyle = u.team === 'enemy' ? '#fca5a5' : '#fde047';
         ctx.fillText(name, scr.sx, scr.sy);
@@ -3693,7 +4035,8 @@ class VoxelStrongholdGame {
       this.fpsSmoothed = this.fpsSmoothed * 0.9 + (1 / rawDt) * 0.1;
     }
 
-    const effectiveScale = this.gameOver ? 0 : (this.tacticalSlowMo ? 0.3 : this.timeScale);
+    const menuFrozen = this.menuState !== 'play';
+    const effectiveScale = (this.gameOver || menuFrozen) ? 0 : (this.tacticalSlowMo ? 0.3 : this.timeScale);
     const dt = rawDt * effectiveScale;
 
     // Automated multi-route reachability & navigation benchmark (opengame-enemies pursuit test!)
@@ -3778,6 +4121,17 @@ class VoxelStrongholdGame {
     atmosphereTime.value += rawDt;
     voxelShaderTime.value = atmosphereTime.value;
     this.updateDioramaAmbientLife(rawDt);
+
+    for (let i = this.scoutLines.length - 1; i >= 0; i--) {
+      const sl = this.scoutLines[i];
+      sl.life -= rawDt;
+      if (sl.life <= 0) {
+        this.scene.remove(sl.mesh);
+        this.scoutLines.splice(i, 1);
+      } else {
+        sl.mesh.material.opacity = Math.min(0.92, (sl.life / sl.maxLife) * 1.3);
+      }
+    }
 
     this.camTarget.lerp(this.camDesiredTarget, Math.min(1, rawDt * 12));
     this.camYaw = THREE.MathUtils.lerp(this.camYaw, this.camDesiredYaw, Math.min(1, rawDt * 10));

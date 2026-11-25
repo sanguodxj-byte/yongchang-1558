@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { VoxelGrid, VMAT, voxelHash, getSharedVoxelMaterial } from './voxelEngine.js';
+import { PolyBuilder, VoxelGrid, VMAT, voxelHash, tintHex, getSharedVoxelMaterial } from './voxelEngine.js';
 import { prefabs } from './voxelPrefabs.js';
 import { createDioramaCloudSeaAndOcean, atmosphereTime } from './dioramaRenderer.js';
 
@@ -15,77 +15,77 @@ const boxGeo = new THREE.BoxGeometry(1, 1, 1);
 
 export const BUILDINGS = {
   wall: {
-    id: 'wall', name: '十字军石墙', cat: 'castle', mode: 'line',
-    cost: { stone: 2 }, hp: 360, height: 1.75,
-    desc: '一指划线依地势筑城！弓手登墙+25%射程',
+    id: 'wall', name: '永昌花岗城墙', cat: 'castle', mode: 'line',
+    cost: { stone: 2 }, hp: 380, height: 1.76,
+    desc: '【考据：条石斜垒夹夯土】划线连续筑城，铳手登墙+25%射程',
   },
   tower: {
-    id: 'tower', name: '火盆角楼高塔', cat: 'castle', mode: 'single',
-    cost: { stone: 10, wood: 4 }, hp: 680, height: 2.44,
-    desc: '3层巨塔！弓手射程+45%且射出火箭引燃沥青火沟',
+    id: 'tower', name: '永昌空心敌台', cat: 'castle', mode: 'single',
+    cost: { stone: 10, wood: 4 }, hp: 700, height: 2.02,
+    desc: '【考据：突出城垣双层敌楼】驻4名铳手，昼烟夜火射火箭引燃火壕',
   },
   gate: {
-    id: 'gate', name: '铁闸城门楼', cat: 'castle', mode: 'single',
-    cost: { stone: 6, wood: 4 }, hp: 560, height: 2.2,
-    desc: '我军进出自动升起铁闸，敌军靠近自动落锁',
+    id: 'gate', name: '重檐谯楼城门', cat: 'castle', mode: 'single',
+    cost: { stone: 6, wood: 4 }, hp: 580, height: 1.85,
+    desc: '【考据：迎川/环海双重铁闸】2身位石拱门洞，友军与炮车自由通行',
   },
   pitch: {
-    id: 'pitch', name: '沥青火油沟', cat: 'castle', mode: 'line',
+    id: 'pitch', name: '猛火油伏火壕', cat: 'castle', mode: 'line',
     cost: { oil: 1, gold: 4 }, hp: 999, height: 0.1,
-    desc: '涂抹在渡口或城前草地！火箭命中或点【引燃】连环爆燃',
+    desc: '【明代守城火器】铺设猛火油硫磺槽，火箭或点【引燃】化作火海',
   },
   ballista: {
-    id: 'ballista', name: '城防重弩塔', cat: 'castle', mode: 'single',
-    cost: { wood: 12, stone: 8, gold: 35 }, hp: 460, height: 2.35,
-    desc: '高台旋转巨弩，自动狙击攻城锤与重甲敌军',
+    id: 'ballista', name: '佛郎机火炮台', cat: 'castle', mode: 'single',
+    cost: { wood: 12, stone: 8, gold: 35 }, hp: 480, height: 2.15,
+    desc: '【明代铜铸子母火炮】八角石台360°轰击倭寇大筒车与旱船槌',
   },
   woodcutter: {
-    id: 'woodcutter', name: '伐木锯木坊', cat: 'econ', mode: 'single',
-    cost: { wood: 6 }, hp: 190, height: 1.8,
-    desc: '篝火农夫上岗：砍树取原木→回坊锯木板→送入堆场',
+    id: 'woodcutter', name: '楠竹松木作坊', cat: 'econ', mode: 'single',
+    cost: { wood: 6 }, hp: 190, height: 1.4,
+    desc: '社火乡民上岗：入林伐竹木→回坊锯杉板→送入营造场',
   },
   quarry: {
-    id: 'quarry', name: '采石场+系牛桩', cat: 'econ', mode: 'single',
+    id: 'quarry', name: '大罗山采石场', cat: 'econ', mode: 'single',
     reqBiome: 'limestone',
-    cost: { wood: 10 }, hp: 240, height: 1.9,
-    desc: '【北麓石灰岩旁】石匠凿石堆放，系牛桩牛车装运回堆场',
+    cost: { wood: 10 }, hp: 240, height: 1.6,
+    desc: '【北麓花岗岩旁】石匠凿条石码放，水牛平板车拉往营造场',
   },
   farm: {
-    id: 'farm', name: '风车麦庄', cat: 'econ', mode: 'single',
-    cost: { wood: 10 }, hp: 190, height: 2.6,
-    desc: '【全陆地随处可建】耕种金麦→风车磨粉→送入皇家谷仓',
+    id: 'farm', name: '江南水车稻田', cat: 'econ', mode: 'single',
+    cost: { wood: 10 }, hp: 190, height: 1.2,
+    desc: '【全陆地/堡内随处可建】收割金稻→水碓舂米→送入永昌义仓',
   },
   ironMine: {
-    id: 'ironMine', name: '赤铁矿井', cat: 'econ', mode: 'single',
+    id: 'ironMine', name: '天工铁冶高炉', cat: 'econ', mode: 'single',
     reqBiome: 'iron',
-    cost: { wood: 12, stone: 4 }, hp: 240, height: 1.9,
-    desc: '【南麓铁矿脉旁】采矿石→回矿冶炼生铁锭→送入堆场',
+    cost: { wood: 12, stone: 4 }, hp: 240, height: 1.5,
+    desc: '【南麓赤铁矿旁】采掘铁矿→竖炉鼓风炼生铁锭→送入营造场',
   },
   pitchRig: {
-    id: 'pitchRig', name: '沥青采油坊', cat: 'econ', mode: 'single',
+    id: 'pitchRig', name: '猛火油熬制坊', cat: 'econ', mode: 'single',
     reqBiome: 'pitchBog',
-    cost: { wood: 10 }, hp: 200, height: 1.8,
-    desc: '【河湾黑油湿地旁】舀取原浆→蒸馏装桶→送入堆场',
+    cost: { wood: 10 }, hp: 200, height: 1.4,
+    desc: '【河湾油泉旁】舀取原浆→铁釜熬制封坛→送入营造场',
   },
   fletcher: {
-    id: 'fletcher', name: '制弓工坊', cat: 'military', mode: 'single',
-    cost: { wood: 12, gold: 20 }, hp: 210, height: 1.8,
-    desc: '去堆场领木板→回坊精制长弓→送入军械库',
+    id: 'fletcher', name: '神机军器局', cat: 'military', mode: 'single',
+    cost: { wood: 12, gold: 20 }, hp: 210, height: 1.5,
+    desc: '赴营造场领竹木→回局精制鸟铳强弩→存入演武厅',
   },
   blacksmith: {
-    id: 'blacksmith', name: '十字军铁匠铺', cat: 'military', mode: 'single',
-    cost: { wood: 14, stone: 8, gold: 30 }, hp: 250, height: 1.9,
-    desc: '去堆场领生铁→回炉锻造重甲→送入军械库',
+    id: 'blacksmith', name: '百炼甲仗锻局', cat: 'military', mode: 'single',
+    cost: { wood: 14, stone: 8, gold: 30 }, hp: 250, height: 1.6,
+    desc: '赴营造场领生铁→回炉锻打明光山文甲→存入演武厅',
   },
   hovel: {
-    id: 'hovel', name: '木屋民居', cat: 'econ', mode: 'single',
-    cost: { wood: 8 }, hp: 170, height: 1.8,
-    desc: '提供+8人口上限，吸引更多流民围聚篝火',
+    id: 'hovel', name: '江南粉墙民居', cat: 'econ', mode: 'single',
+    cost: { wood: 8 }, hp: 180, height: 1.5,
+    desc: '粉墙黛瓦小院，+8乡民上限，吸引四乡百姓归附社火坛',
   },
   demolish: {
-    id: 'demolish', name: '拆除铲', cat: 'castle', mode: 'line',
+    id: 'demolish', name: '拆建营造锤', cat: 'castle', mode: 'line',
     cost: {}, hp: 0, height: 0,
-    desc: '拆除我方墙体或建筑并返还50%建材',
+    desc: '拆除我方城防或工坊并返还50%竹木条石',
   },
 };
 
@@ -397,17 +397,16 @@ export class VoxelWorld {
   }
 
   compileRealisticBasinTerrain() {
-    // 1. Populate logical 64x40 navigation & building grid
+    // 1. Populate logical 64x40 navigation & building grid with smooth continuous elevation!
     for (let gx = 0; gx < GRID_W; gx++) {
       this.cells[gx] = [];
       for (let gz = 0; gz < GRID_H; gz++) {
         const s = this.sampleTopography(gx + 0.5, gz + 0.5);
-        const yTopVox = Math.max(2, Math.round(s.elev / T_VOX) + T_BASE_Y);
-        const quantElev = (yTopVox - T_BASE_Y) * T_VOX;
+        const smoothElev = s.matType === 'water' ? -0.35 : Math.round(s.elev * 20) / 20;
         this.cells[gx][gz] = {
           gx,
           gz,
-          elev: s.matType === 'water' ? -0.35 : quantElev,
+          elev: smoothElev,
           ground: s.matType === 'water' ? 'water' : s.matType,
           biome: s.biome,
           isBridge: false,
@@ -424,146 +423,142 @@ export class VoxelWorld {
       }
     }
 
-    // 2. Sculpt ONE Unified 256 x 28 x 160 Seamless Micro-Voxel Basin (ZERO inter-chunk seam Z-fighting!)
-    const totalSubX = GRID_W * T_SUB; // 256
-    const totalSubZ = GRID_H * T_SUB; // 160
+    // 2. Populate 256 x 160 continuous height lookup (`subElev`) & water mask (zero stair-stepping!)
+    const totalSubX = GRID_W * T_SUB;
+    const totalSubZ = GRID_H * T_SUB;
     const waterColumns = [];
     const waterMask = new Uint8Array(totalSubX * totalSubZ);
-    const topYGrid = new Uint8Array(totalSubX * totalSubZ);
-    const matGrid = new Array(totalSubX * totalSubZ);
     this.subElev = new Float32Array(totalSubX * totalSubZ);
-    const vg = new VoxelGrid(totalSubX, T_MAX_Y, totalSubZ);
 
-    // Pass 1: Precompute exact micro-voxel heights so cliff edges get mossy turf overhangs & physics gets exact foot Y!
     for (let lz = 0; lz < totalSubZ; lz++) {
       const fz = (lz + 0.5) / T_SUB;
-      const gz = Math.min(GRID_H - 1, Math.floor(lz / T_SUB));
       for (let vx = 0; vx < totalSubX; vx++) {
         const fx = (vx + 0.5) / T_SUB;
-        const gx = Math.min(GRID_W - 1, Math.floor(vx / T_SUB));
-        const parentCell = this.cells[gx][gz];
         const s = this.sampleTopography(fx, fz);
         const idx = lz * totalSubX + vx;
-        matGrid[idx] = s;
-
         if (s.matType === 'water') {
           waterMask[idx] = 1;
-          topYGrid[idx] = 2;
           this.subElev[idx] = -0.35;
           waterColumns.push({ vx, vz: lz });
         } else {
-          const useTileFlat = parentCell.biome !== 'cliff' && parentCell.biome !== 'beach' && s.slope < 0.36;
-          const targetElev = useTileFlat ? parentCell.elev : s.elev;
-          const topY = Math.min(T_MAX_Y - 2, Math.max(3, Math.round(targetElev / T_VOX) + T_BASE_Y));
-          topYGrid[idx] = topY;
-          this.subElev[idx] = (topY - T_BASE_Y) * T_VOX;
+          this.subElev[idx] = s.elev;
         }
       }
     }
 
-    // Pass 2: Paint rich multi-layered sedimentary rock strata, mossy terrace rims, clover meadows & pebbled roads!
-    for (let lz = 0; lz < totalSubZ; lz++) {
-      const fz = (lz + 0.5) / T_SUB;
-      for (let vx = 0; vx < totalSubX; vx++) {
-        const fx = (vx + 0.5) / T_SUB;
-        const idx = lz * totalSubX + vx;
-        const s = matGrid[idx];
+    // 3. Sculpt Continuous Faceted Low-Poly Wenzhou Longwan Landscape (128x80 jittered triangle mesh!)
+    const NX = GRID_W * 2; // 128 (0.5m facet spacing)
+    const NZ = GRID_H * 2; // 80
+    const vertPos = new Array((NX + 1) * (NZ + 1));
+    const vertInfo = new Array((NX + 1) * (NZ + 1));
 
+    for (let iz = 0; iz <= NZ; iz++) {
+      for (let ix = 0; ix <= NX; ix++) {
+        const fx = ix * 0.5;
+        const fz = iz * 0.5;
+        const s = this.sampleTopography(Math.min(GRID_W - 0.01, fx), Math.min(GRID_H - 0.01, fz));
+        const isEdge = ix === 0 || ix === NX || iz === 0 || iz === NZ;
+        const inCourtyard = (fx >= 7.5 && fx <= 16.5 && fz >= 13.5 && fz <= 25.5) ||
+                            (fx >= 47.0 && fx <= 57.5 && fz >= 14.5 && fz <= 25.0);
+        const jitScale = (isEdge || inCourtyard || s.isFord) ? 0.0 : 0.11;
+        const jx = (voxelHash(ix, 11, iz, 307) - 0.5) * 2 * jitScale;
+        const jz = (voxelHash(ix, 23, iz, 311) - 0.5) * 2 * jitScale;
+
+        let vy = s.elev;
         if (s.matType === 'water') {
-          const bedCol = voxelHash(vx, 0, lz, 19) > 0.5 ? 0xb7a27e : 0xcab692;
-          vg.set(vx, 0, lz, bedCol, 0.02, false, VMAT.SAND);
-          vg.set(vx, 1, lz, 0xcfbe9a, 0.02, false, VMAT.SAND);
-          continue;
+          vy = -0.64; // Smooth sloped riverbed below -0.32m water plane!
         }
+        const wx = -GRID_W * 0.5 + fx + jx;
+        const wz = -GRID_H * 0.5 + fz + jz;
+        const vIdx = iz * (NX + 1) + ix;
+        vertPos[vIdx] = [wx, vy, wz];
+        vertInfo[vIdx] = s;
+      }
+    }
 
-        const topY = topYGrid[idx];
-        let minN = topY;
-        if (vx > 0) minN = Math.min(minN, topYGrid[idx - 1]);
-        if (vx < totalSubX - 1) minN = Math.min(minN, topYGrid[idx + 1]);
-        if (lz > 0) minN = Math.min(minN, topYGrid[idx - totalSubX]);
-        if (lz < totalSubZ - 1) minN = Math.min(minN, topYGrid[idx + totalSubX]);
-        const isTerraceRim = topY - minN >= 1;
-        const meadowTone = fbm2D(fx * 0.28, fz * 0.28, 733);
+    const pickFacetColor = (s, cx, cz, slopeY) => {
+      const mTone = fbm2D((cx + GRID_W * 0.5) * 0.25, (cz + GRID_H * 0.5) * 0.25, 733);
+      if (s.matType === 'water') return 0xbfa982;
+      if (s.matType === 'pitchBog') return mTone > 0.5 ? 0x2f293e : 0x3b344d;
+      if (s.matType === 'limestone') return mTone > 0.5 ? 0xdde3e8 : 0xcbd3da;
+      if (s.matType === 'iron') return mTone > 0.62 ? 0xd4763b : 0x826d61;
+      if (s.matType === 'ford' || s.matType === 'river_sand') {
+        return s.isFord ? (mTone > 0.5 ? 0xd2cbc0 : 0xc2b9ab) : 0xe3d2ad;
+      }
+      if (s.matType === 'dirt_road') {
+        return mTone > 0.45 ? 0xcac2b4 : 0xd6cab6; // 青石古驿道!
+      }
+      if (slopeY < 0.80 || s.matType === 'bedrock') {
+        // Faceted Daluo Mountain Granite Cliff Faces (`大罗山青白花岗岩切面`)!
+        if (slopeY > 0.90 && s.elev < 2.6) return mTone > 0.5 ? 0x6ea649 : 0x7cb354;
+        return mTone > 0.55 ? 0x9aa3ab : (mTone < 0.38 ? 0x7c868f : 0x8b959e);
+      }
+      if (s.matType === 'oasis') {
+        return mTone > 0.52 ? 0x5ea342 : 0x6eb34c; // 龙湾水乡丰茂绿洲
+      }
+      if (s.matType === 'dry_steppe') {
+        // East Coast Wokou Tidal Sand & Reefs (`东海滩涂沙洲`)
+        return mTone > 0.5 ? 0xd4c396 : 0xc4b587;
+      }
+      if (s.matType === 'alpine_grass') {
+        return mTone > 0.5 ? 0x76a84c : 0x689942;
+      }
+      return mTone > 0.54 ? 0x82bf54 : (mTone < 0.40 ? 0x6ead47 : 0x78b64e);
+    };
 
-        for (let y = 0; y < topY; y++) {
-          const isTop = y === topY - 1;
-          const strata = y % 4;
-          let col = 0xb5a48b;
-          let mId = VMAT.CLIFF;
+    const pb = new PolyBuilder();
+    for (let iz = 0; iz < NZ; iz++) {
+      for (let ix = 0; ix < NX; ix++) {
+        const i00 = iz * (NX + 1) + ix;
+        const i10 = i00 + 1;
+        const i01 = (iz + 1) * (NX + 1) + ix;
+        const i11 = i01 + 1;
 
-          if (s.matType === 'oasis') {
-            if (isTop) {
-              col = meadowTone > 0.55 ? 0x6ea944 : (meadowTone < 0.42 ? 0x7cb84e : 0x74b048);
-              mId = VMAT.GRASS;
-            } else {
-              col = y >= topY - 2 ? 0x9c8265 : 0x8c7358;
-            }
-          } else if (s.matType === 'upland_grass') {
-            if (isTop) {
-              col = meadowTone > 0.56 ? 0x95c45c : (meadowTone < 0.42 ? 0x7eb050 : 0x8ab957);
-              mId = VMAT.GRASS;
-            } else if (isTerraceRim && y === topY - 2) {
-              col = 0x6b9e43; // Trailing mossy turf lip on terrace steps!
-              mId = VMAT.GRASS;
-            } else {
-              col = y >= topY - 2 ? 0xa88f70 : 0x967e61;
-            }
-          } else if (s.matType === 'alpine_grass') {
-            col = isTop ? (meadowTone > 0.5 ? 0x95b659 : 0x86a850) : 0xa69884;
-            mId = isTop ? VMAT.GRASS : VMAT.CLIFF;
-          } else if (s.matType === 'bedrock') {
-            if (isTop && s.slope < 0.88 && topY < T_MAX_Y - 4) {
-              // Lush highland moss & heather turf crowning natural mountain terraces!
-              col = meadowTone > 0.48 ? 0x78ad4e : 0x89b558;
-              mId = VMAT.GRASS;
-            } else if (isTerraceRim && y === topY - 1 && s.slope < 1.05) {
-              col = 0x679844;
-              mId = VMAT.GRASS;
-            } else {
-              // Warm sunlit limestone-sandstone sedimentary strata (no cold concrete gray!)
-              const bandCols = [0xd4c7b2, 0xc1b29b, 0xad9d86, 0x988973];
-              col = bandCols[strata];
-              mId = VMAT.CLIFF;
-            }
-          } else if (s.matType === 'limestone') {
-            col = isTop ? 0xebe6db : (strata % 2 === 0 ? 0xd8d2c5 : 0xe2ddd1);
-            mId = isTop ? VMAT.ASHLAR : VMAT.CLIFF;
-          } else if (s.matType === 'iron') {
-            const isOre = voxelHash(vx, y, lz, 5) > 0.70;
-            col = isOre ? 0xd97941 : (isTop ? 0x8f7d72 : 0x7a6a61);
-            mId = isOre ? VMAT.METAL : VMAT.CLIFF;
-          } else if (s.matType === 'river_sand' || s.matType === 'ford') {
-            const isPebble = voxelHash(vx, 3, lz, 71) > 0.68;
-            if (isTop) {
-              col = s.isFord ? (isPebble ? 0xe0d9cb : 0xd4c39f) : (isPebble ? 0xe2dac8 : 0xeddcb7);
-              mId = (s.isFord || isPebble) ? VMAT.COBBLE : VMAT.SAND;
-            } else {
-              col = 0xc4b08b;
-              mId = VMAT.SAND;
-            }
-          } else if (s.matType === 'dirt_road') {
-            const isCobble = voxelHash(vx, 9, lz, 83) > 0.42;
-            col = isTop ? (isCobble ? 0xd1c6b4 : 0xdfd0b0) : 0xa68d6f;
-            mId = isTop ? (isCobble ? VMAT.COBBLE : VMAT.SAND) : VMAT.CLIFF;
-          } else if (s.matType === 'dry_steppe') {
-            col = isTop ? (meadowTone > 0.5 ? 0xc2be6e : 0xb3b564) : 0xb39c7b;
-            mId = isTop ? VMAT.GRASS : VMAT.CLIFF;
-          } else if (s.matType === 'pitchBog') {
-            col = isTop ? 0x2a2438 : 0x423b52;
-            mId = VMAT.PITCH;
-          }
+        const p00 = vertPos[i00], p10 = vertPos[i10], p01 = vertPos[i01], p11 = vertPos[i11];
+        const flipDiag = ((ix + iz) & 1) === 1;
+        const tris = flipDiag
+          ? [[p00, p01, p11, vertInfo[i00]], [p00, p11, p10, vertInfo[i10]]]
+          : [[p00, p01, p10, vertInfo[i00]], [p10, p01, p11, vertInfo[i11]]];
 
-          vg.set(vx, y, lz, col, 0.018, false, mId);
+        for (let t = 0; t < 2; t++) {
+          const [a, b, c, sInfo] = tris[t];
+          const ax = b[0] - a[0], ay = b[1] - a[1], az = b[2] - a[2];
+          const bx = c[0] - a[0], by = c[1] - a[1], bz = c[2] - a[2];
+          const nx = ay * bz - az * by;
+          const ny = az * bx - ax * bz;
+          const nz = ax * by - ay * bx;
+          const nLen = Math.hypot(nx, ny, nz) || 1;
+          const slopeY = ny / nLen;
+          const cx = (a[0] + b[0] + c[0]) / 3;
+          const cz = (a[2] + b[2] + c[2]) / 3;
+          const baseHex = pickFacetColor(sInfo, cx, cz, slopeY);
+          const jHex = tintHex(baseHex, (voxelHash(ix * 2 + t, 5, iz, 911) - 0.5) * 0.045);
+          pb.tri(a, b, c, jHex, 1.0, 1.0, 1.0, false);
         }
       }
     }
 
-    this.totalVoxelCount += vg.countSolidVoxels();
-    const terrainMeshGroup = vg.buildMeshGroup(T_VOX, { x: 0, y: 0, z: 0 }, true, true, true);
-    terrainMeshGroup.position.set(-GRID_W / 2, -T_BASE_Y * T_VOX, -GRID_H / 2);
-    this.scene.add(terrainMeshGroup);
+    // 4. Outer Diorama Island Faceted Granite Skirt (seals edges cleanly down to y = -1.3m!)
+    const skirtY = -1.30;
+    const skirtHex = 0x6b7580;
+    for (let ix = 0; ix < NX; ix++) {
+      const n0 = vertPos[ix], n1 = vertPos[ix + 1];
+      pb.quad([n1[0], skirtY, n1[2]], [n0[0], skirtY, n0[2]], n0, n1, skirtHex, 0.72, 0.72, 0.94, 0.94);
+      const s0 = vertPos[NZ * (NX + 1) + ix], s1 = vertPos[NZ * (NX + 1) + ix + 1];
+      pb.quad([s0[0], skirtY, s0[2]], [s1[0], skirtY, s1[2]], s1, s0, skirtHex, 0.72, 0.72, 0.94, 0.94);
+    }
+    for (let iz = 0; iz < NZ; iz++) {
+      const w0 = vertPos[iz * (NX + 1)], w1 = vertPos[(iz + 1) * (NX + 1)];
+      pb.quad([w0[0], skirtY, w0[2]], [w1[0], skirtY, w1[2]], w1, w0, skirtHex, 0.72, 0.72, 0.94, 0.94);
+      const e0 = vertPos[iz * (NX + 1) + NX], e1 = vertPos[(iz + 1) * (NX + 1) + NX];
+      pb.quad([e1[0], skirtY, e1[2]], [e0[0], skirtY, e0[2]], e0, e1, skirtHex, 0.72, 0.72, 0.94, 0.94);
+    }
 
-    // 3. Single Seamless Zero-Overlap Flat River Surface Mesh with Per-Vertex Shoreline Foam Factor!
+    const terrainGroup = pb.buildMeshGroup(true, true);
+    this.totalVoxelCount += pb.triCount;
+    this.scene.add(terrainGroup);
+
+    // 5. Seamless Animated Water Surface Mesh with Shoreline Foam!
     if (waterColumns.length > 0) {
       const wPos = [];
       const wNorm = [];
@@ -599,7 +594,6 @@ export class VoxelWorld {
       riverMesh.receiveShadow = true;
       riverMesh.userData.noOutline = true;
       this.scene.add(riverMesh);
-      this.totalVoxelCount += waterColumns.length;
     }
   }
 
@@ -689,14 +683,14 @@ export class VoxelWorld {
   }
 
   initDioramaFlora() {
-    // Build a 3-blade fanned grass tuft geometry (looks lush from isometric 3/4 view instead of single cubes!)
-    const b1 = new THREE.BoxGeometry(0.042, 0.28, 0.042);
+    // Build a 3-blade tapered Low-Poly grass tuft geometry!
+    const b1 = new THREE.ConeGeometry(0.028, 0.28, 4);
     b1.translate(0, 0.14, 0);
-    const b2 = new THREE.BoxGeometry(0.038, 0.24, 0.038);
+    const b2 = new THREE.ConeGeometry(0.025, 0.24, 4);
     b2.translate(0, 0.12, 0);
     b2.rotateZ(0.32);
     b2.rotateY(1.05);
-    const b3 = new THREE.BoxGeometry(0.038, 0.22, 0.038);
+    const b3 = new THREE.ConeGeometry(0.025, 0.22, 4);
     b3.translate(0, 0.11, 0);
     b3.rotateZ(-0.30);
     b3.rotateY(-1.05);
@@ -888,10 +882,10 @@ export class VoxelWorld {
       this.scene.add(sInst);
     }
 
-    // 4. Batched Floating River Water-Lilies
+    // 4. Batched Floating Jiangnan River Lotus Pads & Blossoms
     if (lilyTransforms.length > 0) {
-      const padGeo = new THREE.BoxGeometry(0.26, 0.025, 0.26);
-      const padMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.75 });
+      const padGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.024, 7);
+      const padMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.72, flatShading: true });
       const lilyInst = new THREE.InstancedMesh(padGeo, padMat, lilyTransforms.length * 2);
       const dummy = new THREE.Object3D();
       const col = new THREE.Color();
@@ -1303,17 +1297,13 @@ export class VoxelWorld {
     const cell = this.getCell(gx, gz);
     if (!cell || cell.hasPitch || cell.structure) return false;
     const wp = gridToWorld(gx, gz);
-    const vg = new VoxelGrid(7, 1, 7);
-    for (let z = 0; z < 7; z++) {
-      for (let x = 0; x < 7; x++) {
-        if ((x === 0 || x === 6) && (z === 0 || z === 6)) continue;
-        vg.set(x, 0, z, 0x262134, 0.03, false, VMAT.PITCH);
-      }
-    }
-    const m = vg.buildMeshGroup(0.132, { x: -0.5, y: 0, z: -0.5 }, false, true, true);
-    m.position.set(wp.x, cell.elev + 0.028, wp.z);
+    const pb = new PolyBuilder();
+    pb.prismY(0, 0, 0, 0.44, 0.40, 0.04, 8, 0x241f33);
+    pb.boxY(0, 0.04, 0, 0.56, 0.02, 0.14, 0xfacc15); // Sulfur fuse powder streak!
+    const m = pb.buildMeshGroup(false, true);
+    m.position.set(wp.x, cell.elev + 0.015, wp.z);
     this.scene.add(m);
-    this.totalVoxelCount += 45;
+    this.totalVoxelCount += pb.triCount;
     cell.hasPitch = true;
     cell.pitchMesh = m;
     this.clearFloraAtCell(gx, gz);
@@ -1328,15 +1318,16 @@ export class VoxelWorld {
     const fireGroup = new THREE.Group();
     fireGroup.position.set(wp.x, cell.elev, wp.z);
 
-    const fOuter = new THREE.Mesh(boxGeo, this.mats.fireOuter);
-    fOuter.scale.set(0.84, 0.65, 0.84);
-    fOuter.position.y = 0.32;
-    const fMid = new THREE.Mesh(boxGeo, this.mats.fireMid);
-    fMid.scale.set(0.55, 1.15, 0.55);
-    fMid.position.y = 0.58;
-    const fCore = new THREE.Mesh(boxGeo, this.mats.fireCore);
-    fCore.scale.set(0.28, 0.85, 0.28);
-    fCore.position.y = 0.45;
+    const coneGeo = this._fireConeGeo || (this._fireConeGeo = new THREE.ConeGeometry(0.45, 1.0, 6));
+    const fOuter = new THREE.Mesh(coneGeo, this.mats.fireOuter);
+    fOuter.scale.set(0.95, 0.72, 0.95);
+    fOuter.position.y = 0.34;
+    const fMid = new THREE.Mesh(coneGeo, this.mats.fireMid);
+    fMid.scale.set(0.66, 1.18, 0.66);
+    fMid.position.y = 0.56;
+    const fCore = new THREE.Mesh(coneGeo, this.mats.fireCore);
+    fCore.scale.set(0.36, 0.90, 0.36);
+    fCore.position.y = 0.44;
     fireGroup.add(fOuter, fMid, fCore);
     this.scene.add(fireGroup);
 
@@ -1761,16 +1752,12 @@ export class VoxelWorld {
       freedCoords.push({ gx: c.gx, gz: c.gz });
       if (!isDemolish && ['wall', 'tower', 'gate'].includes(struct.type)) {
         const wp = gridToWorld(c.gx, c.gz);
-        const rg = new VoxelGrid(8, 3, 8);
-        const rCol = struct.team === 'enemy' ? 0x454d5c : 0xc9bfb0;
-        for (let z = 0; z < 8; z++) {
-          for (let x = 0; x < 8; x++) {
-            const h = Math.floor(voxelHash(x, c.gx, z, c.gz) * 3);
-            for (let y = 0; y < h; y++) rg.set(x, y, z, rCol, 0.04, false, VMAT.ASHLAR);
-          }
-        }
-        const rubble = rg.buildMeshGroup(0.124, { x: -0.5, y: 0, z: -0.5 }, true, true, true);
-        rubble.position.set(wp.x, c.elev + 0.02, wp.z);
+        const rpb = new PolyBuilder();
+        const rCol = struct.team === 'enemy' ? 0x454d5c : 0x8b959e;
+        rpb.facetedBlob(-0.14, 0.08, 0.08, 0.24, 0.14, 0.22, rCol, c.gx * 7 + c.gz, 0.22);
+        rpb.facetedBlob(0.16, 0.07, -0.10, 0.20, 0.12, 0.18, rCol, c.gx + c.gz * 13, 0.22);
+        const rubble = rpb.buildMeshGroup(true, true);
+        rubble.position.set(wp.x, c.elev + 0.01, wp.z);
         this.scene.add(rubble);
         c.rubbleMesh = rubble;
       }

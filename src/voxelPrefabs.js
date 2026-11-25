@@ -337,7 +337,7 @@ export class PrefabLibrary {
   getDirectionArrowGeometry() {
     return this.get('lp_ghost_dir_arrow_geo', () => {
       const pb = new PolyBuilder();
-      pb.boxY(0, 0, 0.08, 0.14, 0.06, 0.16, 0x38bdf8, { emissive: true });
+      pb.boxY(0, 0, 0.08, 0.14, 0.05, 0.16, 0xd97706);
       pb.tri([-0.22, 0.05, 0.16], [0.22, 0.05, 0.16], [0, 0.05, 0.40], 0xfef08a, 1, 1, 1);
       pb.tri([0, 0.01, 0.40], [0.22, 0.01, 0.16], [-0.22, 0.01, 0.16], 0xfacc15, 1, 1, 1);
       pb.quad([-0.22, 0.01, 0.16], [0.22, 0.01, 0.16], [0.22, 0.05, 0.16], [-0.22, 0.05, 0.16], 0xfacc15);
@@ -381,7 +381,7 @@ export class PrefabLibrary {
 
     if (key && key !== 'pitch' && key !== 'demolish') {
       const arrowMat = this.get('lp_ghost_arrow_mat', () => new THREE.MeshBasicMaterial({
-        color: 0x7dd3fc,
+        color: 0xfef08a,
         transparent: true,
         opacity: 0.94,
         depthWrite: false,

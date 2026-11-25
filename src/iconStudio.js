@@ -1,35 +1,25 @@
 import * as THREE from 'three';
-import { VoxelGrid, VMAT } from './voxelEngine.js';
+import { PolyBuilder } from './voxelEngine.js';
 import { prefabs } from './voxelPrefabs.js';
 import { createVoxelHumanoid, createSiegeEngine } from './entities.js';
 
-// Custom 3D Micro-Voxel Models for Pitch Barrel & Demolish Pickaxe so EVERY card has a true 3D model render!
+// Low-Poly Ming Fire-Oil Clay Jar & Sulfur Fuse Model for Card Portrait
 function createPitchIconModel() {
-  const vg = new VoxelGrid(12, 14, 12);
-  // Dark wooden tar barrel with iron hoops + spilled glossy pitch puddle + flame spark!
-  vg.cylinderY(5.5, 5.5, 0, 0, 5.2, 0x262134, 0.03, VMAT.PITCH);
-  vg.cylinderY(5.5, 5.5, 1, 10, 3.3, 0x6b472c, 0.03, VMAT.TIMBER);
-  vg.cylinderY(5.5, 5.5, 3, 3, 3.5, 0x475569, 0.02, VMAT.METAL);
-  vg.cylinderY(5.5, 5.5, 8, 8, 3.5, 0x475569, 0.02, VMAT.METAL);
-  vg.cylinderY(5.5, 5.5, 10, 10, 2.8, 0x1e192b, 0.02, VMAT.PITCH);
-  vg.box(5, 11, 5, 6, 13, 6, 0xff8800, 0, true);
-  vg.set(5, 13, 5, 0xfff3b0, 0, true);
-  return vg.buildMeshGroup(0.11, { x: -0.5, y: 0, z: -0.5 }, true, true, true);
+  const pb = new PolyBuilder();
+  pb.prismY(0, 0, 0, 0.56, 0.52, 0.06, 8, 0x241f33);
+  pb.prismY(0, 0.06, 0, 0.28, 0.36, 0.48, 8, 0x4a3326);
+  pb.prismY(0, 0.54, 0, 0.36, 0.20, 0.18, 8, 0x3b261b);
+  pb.prismY(0, 0.72, 0, 0.23, 0.22, 0.08, 8, 0xb91c1c);
+  pb.prismY(0, 0.80, 0, 0.16, 0.02, 0.34, 6, 0xff8800, { emissive: true });
+  return pb.buildMeshGroup(true, true);
 }
 
 function createDemolishPickaxeModel() {
-  const vg = new VoxelGrid(14, 14, 6);
-  // Diagonal oak handle + curved forged steel pickaxe head + cracked stone blocks!
-  vg.box(2, 0, 1, 6, 3, 4, 0xd9d2c5, 0.03, false, VMAT.ASHLAR);
-  vg.box(8, 0, 2, 11, 2, 4, 0xc4bab0, 0.03, false, VMAT.ASHLAR);
-  for (let i = 1; i <= 10; i++) {
-    vg.box(i, i, 2, i + 1, i + 1, 3, 0x9c6b3b, 0.03, false, VMAT.TIMBER);
-  }
-  // Curved steel pickaxe head
-  vg.box(7, 11, 2, 12, 12, 3, 0xdbe4ee, 0.02, false, VMAT.METAL);
-  vg.box(11, 8, 2, 12, 11, 3, 0xcbd5e1, 0.02, false, VMAT.METAL);
-  vg.box(6, 12, 2, 8, 13, 3, 0xcbd5e1, 0.02, false, VMAT.METAL);
-  return vg.buildMeshGroup(0.11, { x: -0.5, y: 0, z: -0.5 }, true, true, false);
+  const pb = new PolyBuilder();
+  pb.facetedBlob(-0.18, 0.16, 0.05, 0.24, 0.18, 0.20, 0x8b959e, 11, 0.2);
+  pb.box(0, 0.48, 0, 0.08, 0.92, 0.08, 0x8c5830, { rotZ: -0.62 });
+  pb.box(0.20, 0.74, 0, 0.48, 0.16, 0.16, 0xcbd5e1, { rotZ: -0.62, topScaleX: 0.85 });
+  return pb.buildMeshGroup(true, true);
 }
 
 /**
