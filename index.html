@@ -3,12 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>守望1558：永昌风云 · 2026中国开源游戏大赛</title>
+  <title>守望1558：永昌风云 · 国风低模抗倭筑城策略</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M4 15L16 4l12 11-3 3H7z' fill='%23dc2626'/%3E%3Crect x='8' y='18' width='16' height='10' fill='%23facc15'/%3E%3C/svg%3E" />
   <script type="importmap">
     {
       "imports": {
         "three": "./vendor/three.module.js",
-        "three/addons/": "./vendor/addons/"
+        "three/addons/": "./vendor/addons/",
+        "./src/voxelEngine.js": "./src/voxelEngine.js?v=203",
+        "./src/voxelPrefabs.js": "./src/voxelPrefabs.js?v=203",
+        "./src/voxelTextures.js": "./src/voxelTextures.js?v=203",
+        "./src/entities.js": "./src/entities.js?v=203",
+        "./src/mapAndBuild.js": "./src/mapAndBuild.js?v=203",
+        "./src/flowField.js": "./src/flowField.js?v=203",
+        "./src/dioramaRenderer.js": "./src/dioramaRenderer.js?v=203",
+        "./src/iconStudio.js": "./src/iconStudio.js?v=203",
+        "./src/audio.js": "./src/audio.js?v=203"
       }
     }
   </script>
@@ -1102,7 +1112,7 @@
       <p class="title-tagline">合族筑堡 · 堡内耕战 · 宗风传世 · 荡平东海倭患</p>
       <div class="title-showcase" id="title-showcase" aria-hidden="true"></div>
       <button id="btn-title-enter" class="game-btn-red title-enter-btn g-txt">⚔ 步入永昌卫城</button>
-      <p class="title-hint">2026中国开源游戏大赛「守望」主题参赛作品 · 点击画面进入</p>
+      <p class="title-hint">明嘉靖三十七年 · 温州龙湾永昌堡抗倭守望纪事 · 点击画面进入</p>
     </div>
     <span class="title-version">v2.0 · 国风低模策略筑城 · 温州永昌堡抗倭史实改编</span>
   </section>
@@ -1438,6 +1448,6 @@
     </div>
   </div>
 
-  <script type="module" src="./src/main.js"></script>
+  <script type="module" src="./src/main.js?v=203"></script>
 </body>
 </html>
