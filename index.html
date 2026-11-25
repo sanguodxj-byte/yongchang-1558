@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>方块要塞：十字军围城</title>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three.module.js",
+        "three/addons/": "./vendor/addons/"
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      /* True Mobile Game Canvas Scaling (Unity Canvas Scaler matchWidthOrHeight equivalent!) */
+      --u: clamp(0.78px, min(0.265vmin, 0.114vw), 1.36px);
+    }
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #2a7aa3;
+      font-family: "Arial Rounded MT Bold", "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
+    }
+    #game-canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    #world-hud-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 12;
+    }
+
+    /* Supercell / Clash-Style Heavy Outlined Game Typography */
+    .g-txt {
+      color: #ffffff;
+      font-weight: 900;
+      letter-spacing: 0.3px;
+      text-shadow:
+        0 2px 0 #3b2312,
+        -1.5px -1.5px 0 #3b2312,
+        1.5px -1.5px 0 #3b2312,
+        -1.5px 1.5px 0 #3b2312,
+        1.5px 1.5px 0 #3b2312,
+        0 3px 5px rgba(0, 0, 0, 0.45);
+    }
+
+    button {
+      cursor: pointer;
+      font-family: inherit;
+      border: none;
+      outline: none;
+      background: none;
+      padding: 0;
+      transition: transform 0.08s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    button:active {
+      transform: scale(0.92) translateY(2px);
+    }
+
+    /* Glossy Bevelled Game Button Surface */
+    .game-btn-wood {
+      background: linear-gradient(180deg, #f7d794 0%, #e1a954 52%, #c28332 100%);
+      border: 2.5px solid #4a2c14;
+      box-shadow:
+        inset 0 2.5px 0 rgba(255, 252, 235, 0.78),
+        inset 0 -3.5px 0 rgba(112, 64, 20, 0.65),
+        0 4px 10px rgba(0, 0, 0, 0.36);
+    }
+    .game-btn-blue {
+      background: linear-gradient(180deg, #60a5fa 0%, #2563eb 55%, #1d4ed8 100%);
+      border: 2.5px solid #172554;
+      box-shadow:
+        inset 0 2.5px 0 rgba(219, 234, 254, 0.75),
+        inset 0 -3.5px 0 rgba(23, 37, 84, 0.65),
+        0 4px 10px rgba(0, 0, 0, 0.36);
+    }
+    .game-btn-red {
+      background: linear-gradient(180deg, #f87171 0%, #dc2626 55%, #991b1b 100%);
+      border: 2.5px solid #450a0a;
+      box-shadow:
+        inset 0 2.5px 0 rgba(254, 226, 226, 0.75),
+        inset 0 -3.5px 0 rgba(69, 10, 10, 0.65),
+        0 4px 10px rgba(0, 0, 0, 0.36);
+    }
+    .game-btn-green {
+      background: linear-gradient(180deg, #4ade80 0%, #16a34a 55%, #15803d 100%);
+      border: 2.5px solid #052e16;
+      box-shadow:
+        inset 0 2.5px 0 rgba(220, 252, 231, 0.78),
+        inset 0 -3.5px 0 rgba(5, 46, 22, 0.65),
+        0 4px 10px rgba(0, 0, 0, 0.36);
+    }
+
+    /* =====================================================================
+       TOP NATIVE MOBILE GAME HUD (Shield Crest | Sundial | 5 Resource Orbs)
+       ===================================================================== */
+    #top-hud {
+      position: fixed;
+      top: calc(8 * var(--u) + var(--safe-top));
+      left: calc(10 * var(--u) + var(--safe-left));
+      right: calc(10 * var(--u) + var(--safe-right));
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 20;
+    }
+    #top-hud > * {
+      pointer-events: auto;
+    }
+
+    /* Top-Left: Crusader Lord Crest + HP Bar + Morale/Tax Badge */
+    .lord-hud-cluster {
+      display: flex;
+      flex-direction: column;
+      gap: calc(6 * var(--u));
+    }
+    .crest-row {
+      display: flex;
+      align-items: center;
+    }
+    #lord-crest-shield {
+      width: calc(48 * var(--u));
+      height: calc(52 * var(--u));
+      border-radius: calc(12 * var(--u)) calc(12 * var(--u)) calc(22 * var(--u)) calc(22 * var(--u));
+      background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+      border: 3px solid #facc15;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4), inset 0 2px 0 rgba(255,255,255,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: calc(24 * var(--u));
+      z-index: 2;
+      cursor: pointer;
+    }
+    .bars-stack {
+      margin-left: calc(-8 * var(--u));
+      padding: calc(5 * var(--u)) calc(12 * var(--u)) calc(5 * var(--u)) calc(14 * var(--u));
+      background: rgba(28, 22, 16, 0.82);
+      border: 2.5px solid #5c4028;
+      border-radius: 0 calc(14 * var(--u)) calc(14 * var(--u)) 0;
+      display: flex;
+      flex-direction: column;
+      gap: calc(4 * var(--u));
+    }
+    .bar-line {
+      display: flex;
+      align-items: center;
+      gap: calc(6 * var(--u));
+    }
+    .bar-label {
+      font-size: calc(11 * var(--u));
+      min-width: calc(36 * var(--u));
+    }
+    .hp-capsule {
+      width: calc(88 * var(--u));
+      height: calc(11 * var(--u));
+      background: #1a120b;
+      border: 1.5px solid #785634;
+      border-radius: 99px;
+      overflow: hidden;
+      box-shadow: inset 0 2px 3px rgba(0,0,0,0.65);
+    }
+    #player-lord-bar {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(180deg, #60a5fa 0%, #2563eb 100%);
+      border-radius: 99px;
+      transition: width 0.2s;
+    }
+    #enemy-lord-bar {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(180deg, #f87171 0%, #dc2626 100%);
+      border-radius: 99px;
+      transition: width 0.2s;
+    }
+
+    /* Sub-row: Tax/Morale Orb + Rewarded Supply Chest Orb */
+    .left-orbs-row {
+      display: flex;
+      align-items: center;
+      gap: calc(7 * var(--u));
+      padding-left: calc(2 * var(--u));
+    }
+    .mini-orb-btn {
+      height: calc(36 * var(--u));
+      padding: 0 calc(11 * var(--u));
+      border-radius: 99px;
+      display: inline-flex;
+      align-items: center;
+      gap: calc(5 * var(--u));
+      font-size: calc(12 * var(--u));
+    }
+
+    /* Top-Center: Sundial Wave Timer Banner */
+    .sundial-cluster {
+      display: flex;
+      align-items: center;
+      gap: calc(6 * var(--u));
+    }
+    .wave-banner {
+      height: calc(42 * var(--u));
+      padding: 0 calc(15 * var(--u));
+      border-radius: 99px;
+      display: flex;
+      align-items: center;
+      gap: calc(7 * var(--u));
+      font-size: calc(14.5 * var(--u));
+      white-space: nowrap;
+      flex-shrink: 0;
+      border: 3px solid #5c3a16;
+      box-shadow: inset 0 2px 0 rgba(255,255,255,0.6), 0 4px 10px rgba(0,0,0,0.35);
+    }
+    .wave-banner.day {
+      background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%);
+    }
+    .wave-banner.urgent {
+      background: linear-gradient(180deg, #fca5a5 0%, #dc2626 100%);
+      border-color: #450a0a;
+      animation: pulseScale 0.55s infinite alternate;
+    }
+    .wave-banner.night {
+      background: linear-gradient(180deg, #6366f1 0%, #312e81 100%);
+      border-color: #1e1b4b;
+    }
+    @keyframes pulseScale {
+      from { transform: scale(1); }
+      to { transform: scale(1.05); }
+    }
+    #btn-speed {
+      width: calc(42 * var(--u));
+      height: calc(42 * var(--u));
+      border-radius: 50%;
+      font-size: calc(13 * var(--u));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Top-Right: 5 Clash-Style Resource Capsules */
+    .res-capsules {
+      display: flex;
+      align-items: center;
+      gap: calc(7 * var(--u));
+    }
+    .res-pill {
+      position: relative;
+      height: calc(34 * var(--u));
+      min-width: calc(68 * var(--u));
+      padding: 0 calc(10 * var(--u)) 0 calc(26 * var(--u));
+      background: rgba(26, 20, 14, 0.84);
+      border: 2px solid #6b4e31;
+      border-radius: 99px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      font-size: calc(13.5 * var(--u));
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.55), 0 3px 6px rgba(0,0,0,0.28);
+    }
+    .res-badge-ico {
+      position: absolute;
+      left: calc(-5 * var(--u));
+      width: calc(30 * var(--u));
+      height: calc(30 * var(--u));
+      border-radius: 50%;
+      border: 2.5px solid #3b2312;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: calc(4 * var(--u));
+      box-shadow: inset 0 2px 0 rgba(255,255,255,0.6), 0 2px 5px rgba(0,0,0,0.42);
+    }
+    .res-badge-ico svg, .hud-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      filter: drop-shadow(0 1.5px 1px rgba(0,0,0,0.45));
+    }
+    .mini-orb-ico {
+      width: calc(20 * var(--u));
+      height: calc(20 * var(--u));
+      flex-shrink: 0;
+    }
+
+    /* =====================================================================
+       BOTTOM-LEFT THUMB ZONE: GIANT CLASH STAMP BUTTONS (BUILD & BARRACKS)
+       ===================================================================== */
+    #left-thumb-stamps {
+      position: fixed;
+      left: calc(12 * var(--u) + var(--safe-left));
+      bottom: calc(12 * var(--u) + var(--safe-bottom));
+      display: flex;
+      gap: calc(10 * var(--u));
+      z-index: 24;
+    }
+    .stamp-btn {
+      width: calc(82 * var(--u));
+      height: calc(86 * var(--u));
+      border-radius: calc(18 * var(--u));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding-bottom: calc(6 * var(--u));
+      position: relative;
+      border-width: 3px;
+    }
+    .stamp-btn.active {
+      outline: 3.5px solid #fef08a;
+      transform: translateY(-5px);
+    }
+    .stamp-3d-ico {
+      position: absolute;
+      top: calc(-10 * var(--u));
+      width: calc(68 * var(--u));
+      height: calc(68 * var(--u));
+      object-fit: contain;
+      pointer-events: none;
+      filter: drop-shadow(0 4px 5px rgba(0,0,0,0.48));
+    }
+    .stamp-btn .s-lbl {
+      font-size: calc(15 * var(--u));
+      position: relative;
+      z-index: 2;
+    }
+
+    /* =====================================================================
+       POP-UP CARD CAROUSEL TRAY (Clean 3D Model Cards, Auto-Hides!)
+       ===================================================================== */
+    #card-tray-drawer {
+      position: fixed;
+      left: calc(194 * var(--u) + var(--safe-left));
+      right: calc(174 * var(--u) + var(--safe-right));
+      bottom: calc(10 * var(--u) + var(--safe-bottom));
+      z-index: 23;
+      display: flex;
+      flex-direction: column;
+      gap: calc(6 * var(--u));
+      pointer-events: none;
+    }
+    #card-tray-drawer > * {
+      pointer-events: auto;
+    }
+    #card-tray-drawer:not(.hidden) {
+      animation: trayPop 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.05);
+    }
+    @keyframes trayPop {
+      from { opacity: 0; transform: translateY(14px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .tray-tabs-bar {
+      display: flex;
+      align-items: center;
+      gap: calc(6 * var(--u));
+    }
+    .tray-tab {
+      padding: calc(5 * var(--u)) calc(14 * var(--u));
+      border-radius: 99px;
+      font-size: calc(12.5 * var(--u));
+    }
+    .tray-tab:not(.active) {
+      background: rgba(38, 28, 18, 0.82);
+      border: 2px solid #785634;
+    }
+    .tray-close-pill {
+      margin-left: auto;
+      padding: calc(5 * var(--u)) calc(13 * var(--u));
+      border-radius: 99px;
+      font-size: calc(12 * var(--u));
+    }
+    .cards-scroll-box {
+      display: flex;
+      gap: calc(8 * var(--u));
+      padding: calc(8 * var(--u));
+      background: linear-gradient(180deg, rgba(58, 41, 25, 0.92) 0%, rgba(34, 24, 15, 0.94) 100%);
+      border: 3px solid #9c7243;
+      border-radius: calc(18 * var(--u));
+      box-shadow: 0 10px 28px rgba(0,0,0,0.52), inset 0 2px 0 rgba(255,241,210,0.34);
+      overflow-x: auto;
+      touch-action: pan-x;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .cards-scroll-box::-webkit-scrollbar {
+      display: none;
+    }
+    .game-card-3d {
+      position: relative;
+      min-width: calc(88 * var(--u));
+      height: calc(106 * var(--u));
+      border-radius: calc(14 * var(--u));
+      background: linear-gradient(180deg, #fffaf0 0%, #ecdec2 100%);
+      border: 2.5px solid #5c3d20;
+      box-shadow: inset 0 2px 0 #ffffff, inset 0 -4px 0 #cbb58d, 0 3px 6px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: calc(4 * var(--u)) calc(5 * var(--u)) calc(5 * var(--u));
+      flex-shrink: 0;
+    }
+    .game-card-3d * {
+      touch-action: pan-x;
+      pointer-events: none;
+    }
+    .game-card-3d.selected {
+      background: linear-gradient(180deg, #dcfce7 0%, #4ade80 100%);
+      border-color: #14532d;
+      transform: translateY(-4px);
+    }
+    .card-portrait-wrap {
+      width: calc(60 * var(--u));
+      height: calc(58 * var(--u));
+      border-radius: calc(10 * var(--u));
+      background: radial-gradient(circle at 50% 62%, rgba(196, 172, 132, 0.55), transparent 72%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card-portrait-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 3px 3px rgba(35, 22, 10, 0.3));
+    }
+    .card-title {
+      font-size: calc(11 * var(--u));
+      color: #3b2312;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .card-cost-ribbon {
+      width: 100%;
+      background: rgba(45, 31, 18, 0.88);
+      border-radius: calc(7 * var(--u));
+      padding: calc(2 * var(--u)) calc(4 * var(--u));
+      font-size: calc(10 * var(--u));
+      color: #fde047;
+      font-weight: 900;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .stock-corner-badge {
+      position: absolute;
+      top: calc(-5 * var(--u));
+      right: calc(-5 * var(--u));
+      background: #2563eb;
+      border: 2px solid #fff;
+      color: #fff;
+      font-size: calc(10 * var(--u));
+      font-weight: 900;
+      border-radius: 99px;
+      padding: calc(1 * var(--u)) calc(6 * var(--u));
+      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    }
+
+    /* Active Build Floating Bar (Continuous Build + 90° Rotate + Exit) */
+    #active-build-floating {
+      position: fixed;
+      bottom: calc(16 * var(--u) + var(--safe-bottom));
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: calc(8 * var(--u));
+      padding: calc(5 * var(--u)) calc(9 * var(--u)) calc(5 * var(--u)) calc(14 * var(--u));
+      background: rgba(20, 83, 45, 0.95);
+      border: 3px solid #86efac;
+      border-radius: 99px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.48);
+      z-index: 28;
+      max-width: calc(100vw - 340 * var(--u));
+    }
+    #build-mode-tip {
+      font-size: calc(11.5 * var(--u));
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: calc(215 * var(--u));
+    }
+    #btn-rotate-build,
+    #btn-cancel-build {
+      padding: calc(5 * var(--u)) calc(11 * var(--u));
+      border-radius: 99px;
+      font-size: calc(11.5 * var(--u));
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* =====================================================================
+       BOTTOM-RIGHT THUMB ARC: RADIAL ACTION WHEEL (MOBA / Mobile RTS Style!)
+       ===================================================================== */
+    #right-thumb-wheel {
+      position: fixed;
+      right: calc(14 * var(--u) + var(--safe-right));
+      bottom: calc(14 * var(--u) + var(--safe-bottom));
+      width: calc(148 * var(--u));
+      height: calc(148 * var(--u));
+      pointer-events: none;
+      z-index: 24;
+    }
+    #right-thumb-wheel button {
+      pointer-events: auto;
+      position: absolute;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    /* Primary Giant Horn Stance Button at thumb corner */
+    #btn-stance-wheel {
+      right: 0;
+      bottom: 0;
+      width: calc(82 * var(--u));
+      height: calc(82 * var(--u));
+      border-width: 3.5px;
+    }
+    #btn-stance-wheel .w-ico {
+      width: calc(34 * var(--u));
+      height: calc(34 * var(--u));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #btn-stance-wheel .w-lbl {
+      font-size: calc(13 * var(--u));
+      margin-top: 2px;
+    }
+    /* 3 Satellite Tactical Orbs in an ergonomic thumb arc! */
+    .sat-orb {
+      width: calc(50 * var(--u));
+      height: calc(50 * var(--u));
+    }
+    .sat-orb .s-ico {
+      width: calc(21 * var(--u));
+      height: calc(21 * var(--u));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .sat-orb .s-sub {
+      font-size: calc(10 * var(--u));
+      margin-top: 1px;
+    }
+    #btn-ignite {
+      left: calc(2 * var(--u));
+      bottom: calc(6 * var(--u));
+    }
+    #btn-repair {
+      left: calc(22 * var(--u));
+      top: calc(24 * var(--u));
+    }
+    #btn-cam-cycle {
+      right: calc(4 * var(--u));
+      top: 0;
+    }
+    #cam-rotate {
+      right: calc(60 * var(--u));
+      top: calc(-4 * var(--u));
+      width: calc(36 * var(--u));
+      height: calc(36 * var(--u));
+      font-size: calc(15 * var(--u));
+    }
+
+    /* Floating Taunts & Toasts */
+    #taunt-banner {
+      position: fixed;
+      top: calc(62 * var(--u) + var(--safe-top));
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(69, 10, 10, 0.92);
+      border: 2.5px solid #fca5a5;
+      border-radius: 99px;
+      padding: calc(6 * var(--u)) calc(18 * var(--u));
+      font-size: calc(12.5 * var(--u));
+      z-index: 25;
+      pointer-events: none;
+      max-width: 64vw;
+      text-align: center;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    }
+    #toast-msg {
+      position: fixed;
+      top: calc(102 * var(--u) + var(--safe-top));
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(28, 20, 12, 0.92);
+      border: 2.5px solid #fbbf24;
+      border-radius: 99px;
+      padding: calc(6 * var(--u)) calc(16 * var(--u));
+      font-size: calc(12.5 * var(--u));
+      z-index: 35;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    /* =====================================================================
+       DEV / QA TELEMETRY DRAWER (Hidden in Retail; triple-tap Shield or F2!)
+       ===================================================================== */
+    #dev-qa-panel {
+      position: fixed;
+      top: calc(58 * var(--u) + var(--safe-top));
+      right: calc(12 * var(--u) + var(--safe-right));
+      width: 244px;
+      background: rgba(15, 23, 42, 0.94);
+      border: 2px solid #f59e0b;
+      border-radius: 12px;
+      padding: 9px 11px;
+      color: #f8fafc;
+      z-index: 55;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      font-size: 11px;
+    }
+    .dev-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 900;
+      color: #fbbf24;
+      border-bottom: 1px dashed #475569;
+      padding-bottom: 4px;
+    }
+    .dev-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      background: rgba(30, 41, 59, 0.9);
+      padding: 5px 7px;
+      border-radius: 6px;
+      font-family: Consolas, monospace;
+      color: #7dd3fc;
+    }
+    .dev-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+    }
+    .dev-btn {
+      background: #334155;
+      color: #f1f5f9;
+      border: 1px solid #64748b;
+      padding: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 6px;
+    }
+
+    /* Modals & Portrait Guard */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(12, 18, 30, 0.76);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 70;
+    }
+    .modal-box {
+      width: min(410px, 86vw);
+      background: linear-gradient(180deg, #fffaf0 0%, #ede0c8 100%);
+      border: 4px solid #5c3d20;
+      border-radius: 20px;
+      padding: 20px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+    }
+    .modal-box h3 {
+      margin: 0;
+      font-size: 20px;
+      color: #7c3f11;
+    }
+    .modal-box p {
+      margin: 0;
+      font-size: 13.5px;
+      color: #4a3520;
+      line-height: 1.5;
+      font-weight: 700;
+    }
+    .ad-progress-bg {
+      width: 100%;
+      height: 14px;
+      background: #3b2716;
+      border-radius: 99px;
+      padding: 2px;
+      overflow: hidden;
+    }
+    #ad-progress-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #4ade80, #16a34a);
+      border-radius: 99px;
+      transition: width 0.3s linear;
+    }
+    .primary-cta {
+      padding: 11px 18px;
+      border-radius: 12px;
+      font-size: 15px;
+    }
+
+    #portrait-guard {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(18, 28, 45, 0.96);
+      z-index: 95;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 24px;
+      text-align: center;
+      color: #fff;
+    }
+    @media (orientation: portrait) and (max-width: 680px) {
+      #portrait-guard:not(.dismissed) {
+        display: flex;
+      }
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
+  <canvas id="world-hud-canvas"></canvas>
+
+  <!-- Mobile Portrait Orientation Helper -->
+  <div id="portrait-guard">
+    <div style="font-size:48px;">📱↻</div>
+    <h3 class="g-txt" style="margin:0;">请横屏握持指挥要塞</h3>
+    <p style="margin:0;font-size:14px;color:#cbd5e1;max-width:280px;">横屏视野可流畅使用双拇指筑城卡牌与战术号角轮盘。</p>
+    <button id="btn-dismiss-portrait" class="game-btn-green primary-cta g-txt">继续体验</button>
+  </div>
+
+  <!-- ===================================================================
+       TOP MOBILE GAME HUD (Shield Crest | Sundial | 5 Resource Capsules)
+       =================================================================== -->
+  <header id="top-hud">
+    <div class="lord-hud-cluster">
+      <div class="crest-row">
+        <button id="lord-crest-shield" title="我方领主 (连点3次开启QA调试面板)" style="padding:calc(8 * var(--u));">
+          <svg class="hud-svg" viewBox="0 0 32 32">
+            <path d="M4 23L2 10l7 5 7-9 7 9 7-5-2 13H4z" fill="#facc15" stroke="#451a03" stroke-width="2.4" stroke-linejoin="round"/>
+            <rect x="4" y="23" width="24" height="4.5" rx="2" fill="#eab308" stroke="#451a03" stroke-width="2.2"/>
+            <circle cx="16" cy="16" r="2.3" fill="#ef4444"/>
+          </svg>
+        </button>
+        <div class="bars-stack">
+          <div class="bar-line">
+            <span class="bar-label g-txt">狮心王</span>
+            <div class="hp-capsule"><div id="player-lord-bar"></div></div>
+          </div>
+          <div class="bar-line">
+            <span class="bar-label g-txt">黑狼公</span>
+            <div class="hp-capsule"><div id="enemy-lord-bar"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="left-orbs-row">
+        <button id="btn-lord-garrison" class="game-btn-blue mini-orb-btn g-txt" title="命令领主进入最近城防建筑或出城迎战 (也可直接拖拽领主到任意建筑)">
+          <svg class="hud-svg mini-orb-ico" viewBox="0 0 24 24">
+            <path d="M4 18L2 8l5 4 5-7 5 7 5-4-2 10H4z" fill="#facc15" stroke="#451a03" stroke-width="2.1" stroke-linejoin="round"/>
+          </svg>
+          <span id="lord-garrison-lbl">驻堡</span>
+        </button>
+        <button id="tax-btn" class="game-btn-wood mini-orb-btn g-txt">
+          <svg class="hud-svg mini-orb-ico" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9.5" fill="#fde047" stroke="#451a03" stroke-width="2.2"/>
+            <circle cx="9" cy="10" r="1.4" fill="#451a03"/>
+            <circle cx="15" cy="10" r="1.4" fill="#451a03"/>
+            <path d="M8.5 14.2c1.2 2 5.8 2 7 0" fill="none" stroke="#451a03" stroke-width="2.1" stroke-linecap="round"/>
+          </svg>
+          <span id="tax-lbl">平税</span>
+        </button>
+        <button id="btn-ad-airdrop" class="game-btn-green mini-orb-btn g-txt">
+          <svg class="hud-svg mini-orb-ico" viewBox="0 0 24 24">
+            <rect x="3" y="9" width="18" height="11" rx="2.5" fill="#d97706" stroke="#3b1d06" stroke-width="2.2"/>
+            <path d="M3 12h18" stroke="#3b1d06" stroke-width="2.2"/>
+            <path d="M5 9c0-3.5 14-3.5 14 0" fill="#f59e0b" stroke="#3b1d06" stroke-width="2.2"/>
+            <rect x="10" y="10" width="4" height="5" rx="1" fill="#fde047" stroke="#3b1d06" stroke-width="1.8"/>
+          </svg>
+          <span>补给箱</span>
+        </button>
+        <button id="btn-ad-guard" class="game-btn-red mini-orb-btn g-txt hidden">
+          <svg class="hud-svg mini-orb-ico" viewBox="0 0 24 24">
+            <path d="M12 2L4 5.5v6c0 5.2 3.4 9 8 10.5 4.6-1.5 8-5.3 8-10.5v-6L12 2z" fill="#fde047" stroke="#450a0a" stroke-width="2.2"/>
+            <path d="M12 6v12M7.5 11.5h9" stroke="#dc2626" stroke-width="2.6" stroke-linecap="round"/>
+          </svg>
+          <span>救场</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="sundial-cluster">
+      <div id="wave-timer" class="wave-banner day g-txt">第1天 01:15</div>
+      <button id="btn-speed" class="game-btn-wood g-txt">1x</button>
+    </div>
+
+    <div class="res-capsules">
+      <div class="res-pill g-txt" title="木材">
+        <span class="res-badge-ico" style="background:linear-gradient(180deg,#d97706,#92400e);">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 9l11-4c2.5 0 5 2.5 5 5.5L9 15z" fill="#b45309" stroke="#3b1d06" stroke-width="2"/>
+            <ellipse cx="6.5" cy="12.5" rx="3.8" ry="4.5" fill="#fde68a" stroke="#3b1d06" stroke-width="2"/>
+            <circle cx="6.5" cy="12.5" r="1.4" fill="#92400e"/>
+          </svg>
+        </span>
+        <span id="r-wood">92</span>
+      </div>
+      <div class="res-pill g-txt" title="石料">
+        <span class="res-badge-ico" style="background:linear-gradient(180deg,#94a3b8,#475569);">
+          <svg viewBox="0 0 24 24">
+            <polygon points="12,3 21,8 19,18 5,18 3,8" fill="#cbd5e1" stroke="#1e293b" stroke-width="2.2" stroke-linejoin="round"/>
+            <polyline points="3,8 12,12 21,8" fill="none" stroke="#64748b" stroke-width="1.8"/>
+            <line x1="12" y1="12" x2="12" y2="18" stroke="#64748b" stroke-width="1.8"/>
+          </svg>
+        </span>
+        <span id="r-stone">85</span>
+      </div>
+      <div class="res-pill g-txt" title="粮食">
+        <span class="res-badge-ico" style="background:linear-gradient(180deg,#facc15,#ca8a04);">
+          <svg viewBox="0 0 24 24">
+            <path d="M6 19L18 5" stroke="#451a03" stroke-width="2.2" stroke-linecap="round"/>
+            <ellipse cx="14" cy="7" rx="3.2" ry="1.8" transform="rotate(-40 14 7)" fill="#fef08a" stroke="#451a03" stroke-width="1.6"/>
+            <ellipse cx="10.5" cy="11" rx="3.2" ry="1.8" transform="rotate(-40 10.5 11)" fill="#fde047" stroke="#451a03" stroke-width="1.6"/>
+            <ellipse cx="15.5" cy="11.5" rx="3.2" ry="1.8" transform="rotate(20 15.5 11.5)" fill="#fde047" stroke="#451a03" stroke-width="1.6"/>
+          </svg>
+        </span>
+        <span id="r-food">70</span>
+      </div>
+      <div class="res-pill g-txt" title="金币">
+        <span class="res-badge-ico" style="background:linear-gradient(180deg,#fde047,#d97706);">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="8.5" fill="#facc15" stroke="#451a03" stroke-width="2.2"/>
+            <circle cx="12" cy="12" r="5.2" fill="none" stroke="#b45309" stroke-width="1.6"/>
+            <path d="M12 8.5v7M9.2 12h5.6" stroke="#78350f" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span id="r-gold">210</span>
+      </div>
+      <div class="res-pill g-txt" title="空闲村民/人口上限">
+        <span class="res-badge-ico" style="background:linear-gradient(180deg,#4ade80,#15803d);">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="8" r="4" fill="#fef3c7" stroke="#14532d" stroke-width="2"/>
+            <path d="M5 20c0-4 3.2-6.5 7-6.5s7 2.5 7 6.5" fill="#86efac" stroke="#14532d" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span id="r-peasants">6/28</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================================================================
+       DEV / QA DEBUG PANEL (Triple-tap Crown Shield or press F2 / ?dev=1)
+       =================================================================== -->
+  <aside id="dev-qa-panel" class="hidden">
+    <div class="dev-header">
+      <span>QA 工程调试窗</span>
+      <button id="btn-close-dev" class="dev-btn" style="padding:2px 6px;">✕</button>
+    </div>
+    <div class="dev-metrics">
+      <span id="dev-fps">FPS: 60</span>
+      <span id="dev-draws">Draws: --</span>
+      <span id="voxel-stat" style="grid-column:span 2;">微体素: --</span>
+      <span id="dev-nav" style="grid-column:span 2;color:#86efac;">寻路: --</span>
+    </div>
+    <div class="dev-actions">
+      <button id="btn-force-night" class="dev-btn">立即入夜</button>
+      <button id="dev-add-res" class="dev-btn">+300全资源</button>
+      <button id="dev-spawn-siege" class="dev-btn">刷反攻军团</button>
+      <button id="dev-win" class="dev-btn">模拟通关</button>
+    </div>
+  </aside>
+
+  <!-- Floating Taunts & Toasts -->
+  <div id="taunt-banner" class="g-txt hidden"></div>
+  <div id="toast-msg" class="g-txt hidden"></div>
+
+  <!-- ===================================================================
+       BOTTOM-LEFT THUMB STAMPS (Clash-style 3D Model Build & Army Triggers)
+       =================================================================== -->
+  <nav id="left-thumb-stamps">
+    <button id="stamp-build" class="game-btn-wood stamp-btn">
+      <img id="stamp-build-img" class="stamp-3d-ico" alt="" />
+      <span class="s-lbl g-txt">筑城</span>
+    </button>
+    <button id="stamp-army" class="game-btn-blue stamp-btn">
+      <img id="stamp-army-img" class="stamp-3d-ico" alt="" />
+      <span class="s-lbl g-txt">募兵</span>
+    </button>
+  </nav>
+
+  <!-- Pop-up 3D Model Card Carousel Tray (Hidden when admiring battlefield!) -->
+  <section id="card-tray-drawer" class="hidden">
+    <div id="build-tabs-row" class="tray-tabs-bar">
+      <button class="tray-tab game-btn-blue active g-txt" data-cat="castle">城防</button>
+      <button class="tray-tab g-txt" data-cat="econ">民生</button>
+      <button class="tray-tab g-txt" data-cat="military">军工</button>
+      <button id="btn-close-tray" class="tray-close-pill game-btn-red g-txt">收起 ▼</button>
+    </div>
+    <div id="army-tabs-row" class="tray-tabs-bar hidden">
+      <span class="tray-tab game-btn-blue active g-txt" id="armory-stock-pill">军械库存：弓6 · 甲4 · 铁18 · 油16</span>
+      <button id="btn-close-army-tray" class="tray-close-pill game-btn-red g-txt">收起 ▼</button>
+    </div>
+    <div id="tray-cards-box" class="cards-scroll-box"></div>
+  </section>
+
+  <!-- Active Continuous-Building & 90° Rotation Floating Bar -->
+  <div id="active-build-floating" class="hidden">
+    <span id="build-mode-tip" class="g-txt">点地/拖拽连续建造</span>
+    <button id="btn-rotate-build" class="game-btn-blue g-txt" title="顺时针旋转建筑朝向 90° (快捷键 R)">↻ 转向 0°</button>
+    <button id="btn-cancel-build" class="game-btn-red g-txt" title="退出建造模式 (右键 / Esc)">完成筑城</button>
+  </div>
+
+  <!-- ===================================================================
+       BOTTOM-RIGHT THUMB RADIAL ACTION WHEEL (Horn + Fire + Repair + Cam)
+       =================================================================== -->
+  <section id="right-thumb-wheel">
+    <button id="btn-ignite" class="game-btn-red sat-orb" title="引燃全图沥青火油沟">
+      <span class="s-ico">
+        <svg class="hud-svg" viewBox="0 0 24 24">
+          <path d="M12 2c2 4.5 6 7 6 12a6 6 0 1 1-12 0c0-3.2 2-5.8 3.5-7.5 0 2.2 1.5 3 2.5 1.5 0-2.2-.5-4.2 0-6z" fill="#fde047" stroke="#450a0a" stroke-width="2" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="s-sub g-txt">点火</span>
+    </button>
+    <button id="btn-repair" class="game-btn-wood sat-orb" title="一键耗石修复城墙">
+      <span class="s-ico">
+        <svg class="hud-svg" viewBox="0 0 24 24">
+          <path d="M14 4l6 6-3 3-6-6 3-3z" fill="#cbd5e1" stroke="#3b2312" stroke-width="2" stroke-linejoin="round"/>
+          <path d="M12.5 8.5L5 16l3 3 7.5-7.5" fill="#b45309" stroke="#3b2312" stroke-width="2" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="s-sub g-txt">修墙</span>
+    </button>
+    <button id="btn-cam-cycle" class="game-btn-wood sat-orb" title="切换战区镜头 (内城/渡口/敌堡)">
+      <span class="s-ico">
+        <svg class="hud-svg" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" fill="#fef3c7" stroke="#3b2312" stroke-width="2"/>
+          <polygon points="12,5 14.5,12 12,19 9.5,12" fill="#ef4444" stroke="#3b2312" stroke-width="1.2"/>
+        </svg>
+      </span>
+      <span class="s-sub g-txt" id="cam-zone-lbl">内城</span>
+    </button>
+    <button id="cam-rotate" class="game-btn-wood g-txt" title="旋转视角90°">↻</button>
+
+    <button id="btn-stance-wheel" class="game-btn-blue" title="点击切换全军战术姿态">
+      <span class="w-ico" id="stance-ico">
+        <svg class="hud-svg" viewBox="0 0 28 28">
+          <path d="M14 2L4 6.5v7c0 6.5 4.3 10.8 10 12.5 5.7-1.7 10-6 10-12.5v-7L14 2z" fill="#eff6ff" stroke="#172554" stroke-width="2.4"/>
+          <path d="M14 5.5v17M7.5 12.5h13" stroke="#dc2626" stroke-width="3.2" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span class="w-lbl g-txt" id="stance-lbl">固守</span>
+    </button>
+  </section>
+
+  <!-- Rewarded Ad Modal -->
+  <div id="ad-modal" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <h3 id="ad-title">🎁 皇家物资空投</h3>
+      <p>狮心王后勤飞艇正在投递战备木材、石料与军饷。</p>
+      <div class="ad-progress-bg"><div id="ad-progress-fill"></div></div>
+      <button id="ad-claim-btn" class="game-btn-green primary-cta g-txt" disabled>空投降落中...</button>
+    </div>
+  </div>
+
+  <!-- Victory / Defeat Modal -->
+  <div id="gameover-modal" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <h3 id="go-title">👑 凯旋！！</h3>
+      <p id="go-desc"></p>
+      <button id="btn-double-medal" class="game-btn-green primary-cta g-txt">🎬 双倍领取【十字军纹章 ×100】</button>
+      <button id="btn-restart" class="game-btn-wood primary-cta g-txt">🔄 再战一局</button>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
