@@ -1,0 +1,89 @@
+{
+  "checked": "2026-11-26",
+  "use": "Modern east-west relief sanity check only; not a 1558 shoreline or terrain survey",
+  "dataset": "SRTM90m via OpenTopoData",
+  "source": "https://api.opentopodata.org/v1/srtm90m",
+  "interpolation": "bilinear",
+  "samples": [
+    {
+      "dataset": "srtm90m",
+      "elevation": 566.0,
+      "location": {
+        "lat": 27.90559,
+        "lng": 120.75
+      }
+    },
+    {
+      "dataset": "srtm90m",
+      "elevation": 446.0,
+      "location": {
+        "lat": 27.90559,
+        "lng": 120.76
+      }
+    },
+    {
+      "dataset": "srtm90m",
+      "elevation": 294.0,
+      "location": {
+        "lat": 27.90559,
+        "lng": 120.77
+      }
+    },
+    {
+      "dataset": "srtm90m",
+      "elevation": 212.0,
+      "location": {
+        "lat": 27.90559,
+        "lng": 120.78
+      }
+    },
+    {
+      "dataset": "srtm90m",
+      "elevation": 291.0,
+      "location": {
+        "lat": 27.90559,
+        "lng": 120.79
+      }
+    },
+    {
+      "dataset": "srtm90m",
+      "elevation": 6.0,
+      "location": {
+        "lat": 27.90559,
+        "lng": 120.8
+      }
+    },
+    {
+      "dataset": "srtm90m",
+      "elevation": 10.0,
+      "location": {
+        "lat": 27.90559,
+        "lng": 120.80967
+      }
+    },
+    {
+      "dataset": "srtm90m",
+      "elevation": 15.0,
+      "location": {
+        "lat": 27.90559,
+        "lng": 120.82
+      }
+    },
+    {
+      "dataset": "srtm90m",
+      "elevation": 6.0,
+      "location": {
+        "lat": 27.90559,
+        "lng": 120.83
+      }
+    },
+    {
+      "dataset": "srtm90m",
+      "elevation": 8.0,
+      "location": {
+        "lat": 27.90559,
+        "lng": 120.84
+      }
+    }
+  ]
+}

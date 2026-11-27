@@ -1091,6 +1091,19 @@
       .menu-btn { padding: calc(8 * var(--u)) calc(12 * var(--u)); }
     }
   </style>
+  <style>
+    #historic-map { position:fixed; right:calc(12px + var(--safe-right)); top:calc(70px + var(--safe-top));
+      width:184px; padding:8px; background:rgba(32,29,23,.91); color:#ebdcbd;
+      border:1px solid #a8864c; border-radius:6px; z-index:19; box-shadow:0 4px 14px #0005; }
+    #historic-map[hidden] { display:none; }
+    #historic-map header { display:flex; flex-wrap:wrap; gap:5px; align-items:center; justify-content:space-between; font-size:12px; margin-bottom:6px; }
+    #historic-map header span { white-space:nowrap; }
+    #historic-map-canvas { display:block; width:100%; height:auto; cursor:crosshair; touch-action:none; border:1px solid #766747; }
+    #btn-map-overview { color:#f4e5c7; padding:3px 6px; border:1px solid #a8864c; border-radius:4px; font:inherit; }
+    #historic-map small { display:block; font-size:10px; text-align:center; margin-top:5px; color:#cbbd9d; }
+    @media(max-width:1100px) { #historic-map { width:142px; top:70px; } }
+    @media(max-height:600px) { #historic-map { width:124px; top:64px; } #historic-map small { display:none; } }
+  </style>
 </head>
 <body>
   <!-- ===================================================================
@@ -1445,6 +1458,13 @@
     </div>
   </div>
 
+  <!-- Village navigation and historical geography -->
+  <aside id="historic-map" hidden aria-label="永昌堡方位图">
+    <header><span>永昌形胜 · 北 ↑</span><button id="btn-map-overview" title="全图与村落视角切换，快捷键 M">全图 M</button></header>
+    <canvas id="historic-map-canvas" aria-label="点击地图移动视角"></canvas>
+    <small>西倚山 · 东向海 · 点击移镜</small>
+  </aside>
+
   <!-- Victory / Defeat Modal -->
   <div id="gameover-modal" class="modal-backdrop hidden">
     <div class="modal-box">
@@ -1456,6 +1476,6 @@
     </div>
   </div>
 
-  <script type="module" src="./src/main.js?v=206"></script>
+  <script type="module" src="./src/main.js?v=207"></script>
 </body>
 </html>

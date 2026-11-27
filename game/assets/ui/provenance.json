@@ -1,0 +1,33 @@
+{
+  "portraits": {
+    "source": "src/iconStudio.js using existing project models",
+    "sourceHashes": {
+      "src/iconStudio.js": "25453cc8a74a4012a533b538be85d0e9882c2b0477237b7b86c26d4e01633fb7",
+      "src/voxelPrefabs.js": "06c926db8c9b508e80c4683102267def4d329a596a04b12fb5f4cf96d75636e2",
+      "src/entities.js": "3d7837eae6f25ff7a5fd38c2e02e8fddca2c3beed7060559475c3a6b8d26f96c",
+      "index.html": "7815c87bb0b853cc102c4f64107edae35d1eee14bd99eea8f6c46e2812cda136"
+    }
+  },
+  "iconsAndSkins": {
+    "source": "scripts/build-ui-skins.py",
+    "style": "永昌海防图志",
+    "receipt": "style-provenance.json"
+  },
+  "font": {
+    "body": "Sarasa Gothic",
+    "heading": "Unmodified LXGW WenKai Medium",
+    "license": "SIL OFL 1.1"
+  },
+  "cover": {
+    "asset": "title-guohua.png",
+    "method": "Two-stage image-to-image: traditional Chinese guohua repaint, then paper-seam repair",
+    "model": "gemini-3-pro-image",
+    "record": "content/cover-generation.json",
+    "sha256": "3b8c4efab34927bed95753d920c42e0207b8ba12f43ba113f177fb898e4125d0",
+    "dimensions": [
+      2560,
+      1600
+    ],
+    "postprocessing": "None; final generated PNG copied byte-for-byte"
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "name": "永昌海防图志",
+  "version": 3,
+  "colors": {
+    "ink": "263e38",
+    "muted": "5e6c60",
+    "paper": "f4f0e2",
+    "linen": "e9e4d2",
+    "jade": "3f6658",
+    "jadeLight": "e1e8dc",
+    "vermilion": "a44332",
+    "gold": "ac9665",
+    "rule": "c4b99a",
+    "onDark": "fbf3df"
+  },
+  "surfaces": {
+    "paper": [
+      "f4f0e2",
+      "c4b99a",
+      "263e38"
+    ],
+    "linen": [
+      "e9e4d2",
+      "b4a783",
+      "263e38"
+    ],
+    "jade": [
+      "3f6658",
+      "ac9665",
+      "fbf3df"
+    ],
+    "vermilion": [
+      "a44332",
+      "c8a16e",
+      "fbf3df"
+    ],
+    "ink": [
+      "263e38",
+      "ac9665",
+      "fbf3df"
+    ],
+    "panel": [
+      "f4f0e2",
+      "ac9665",
+      "263e38"
+    ],
+    "card": [
+      "fbf6e9",
+      "c4b99a",
+      "263e38"
+    ]
+  },
+  "typography": {
+    "body": "Sarasa Gothic",
+    "heading": "LXGW WenKai Medium",
+    "minimumBodySize": 20,
+    "buttonSize": 25,
+    "headingSize": 36
+  },
+  "motifs": [
+    "纸绢册页",
+    "朱印",
+    "木刻海水纹",
+    "窗棂折角",
+    "青绿山水"
+  ],
+  "source": "Original vector UI authored for the Yongchang coastal defence game",
+  "layout": {
+    "frameSlice": 20,
+    "ornamentExtent": 18,
+    "panelPadding": [
+      24,
+      22
+    ],
+    "buttonPadding": [
+      22,
+      12
+    ],
+    "compactButtonPadding": [
+      14,
+      12
+    ],
+    "cardPadding": [
+      16,
+      14
+    ]
+  }
+}

@@ -347,6 +347,31 @@ function buildHorseLegPart(isEnemy) {
   });
 }
 
+// Separate hand props keep a worker's trade legible and follow the hand bone.
+export function createWorkerTool(kind) {
+  const p = new PolyBuilder(), wood = 0x80512d, steel = 0x7c8c90;
+  if (['sickle', 'axe', 'pickaxe', 'hammer'].includes(kind)) {
+    p.cylinderAxis(0, 0, .10, .021, .018, .52, 8, 'z', wood, { matId: VMAT.TIMBER });
+    if (kind === 'sickle') {
+      for (let i = 0; i < 7; i++) {
+        const a = i * Math.PI / 7, b = (i+1) * Math.PI / 7;
+        p.quad([.19*Math.sin(a),0,.34+.19*Math.cos(a)], [.19*Math.sin(b),0,.34+.19*Math.cos(b)],
+          [.14*Math.sin(b),0,.34+.14*Math.cos(b)], [.14*Math.sin(a),0,.34+.14*Math.cos(a)],steel,1,1,1,1,true,VMAT.METAL);
+      }
+    } else if (kind === 'pickaxe') p.box(0,0,.32,.46,.045,.07,steel,{topScaleX:.65,matId:VMAT.METAL});
+    else if (kind === 'axe') p.box(.07,0,.31,.20,.045,.19,steel,{topScaleX:.65,matId:VMAT.METAL});
+    else p.box(0,0,.30,.18,.10,.11,steel,{matId:VMAT.METAL});
+  } else if (kind === 'ladle') {
+    p.cylinderAxis(0,0,.12,.018,.015,.46,8,'z',wood,{matId:VMAT.TIMBER});
+    p.latheY(0,-.055,.37,[[.05,0],[.095,.04],[.10,.075]],10,steel,{matId:VMAT.METAL});
+  } else if (kind === 'saw') {
+    p.box(0,0,.18,.07,.04,.40,steel,{matId:VMAT.METAL});
+    p.box(0,0,-.08,.10,.065,.12,wood,{matId:VMAT.TIMBER});
+    for(let i=0;i<7;i++)p.box(.045,0,.02+i*.05,.03,.035,.024,steel,{rotY:.6,matId:VMAT.METAL});
+  } else throw new Error('Unknown worker tool: '+kind);
+  const tool=p.buildMeshGroup(true,true);tool.name='Tool_'+kind;return tool;
+}
+
 export function createVoxelHumanoid(role = 'peasant', team = 'player') {
   const root = new THREE.Group();
   const isEnemy = team === 'enemy';
@@ -439,6 +464,7 @@ export function createVoxelHumanoid(role = 'peasant', team = 'player') {
     leftArm,
     rightArm,
     horseGroup,
+    bodyGroup,
     carryMesh,
     torso,
     head,

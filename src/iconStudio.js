@@ -199,7 +199,7 @@ export function generateAll3DIcons(renderer, mats) {
 
   const buildIds = [
     'wall', 'tower', 'gate', 'pitch', 'ballista', 'demolish',
-    'woodcutter', 'quarry', 'farm', 'ironMine', 'pitchRig', 'hovel',
+    'woodcutter', 'quarry', 'oxPost', 'stockpile', 'farm', 'ironMine', 'pitchRig', 'hovel',
     'fletcher', 'blacksmith',
   ];
   buildIds.forEach((id) => {

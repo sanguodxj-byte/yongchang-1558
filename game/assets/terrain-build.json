@@ -1,0 +1,52 @@
+{
+  "schema": 2,
+  "sources": {
+    "content/yongchang-map.json": "e2468179a8d39ded70761b82615baf866d479c3b1b4d83c17e5575d220b28b11",
+    "scripts/build-terrain.py": "c2c28840f89ee5f28f2d7f9ab3b320318a518578963730de4be8c5f4da2934b3",
+    "scripts/terrain_field.py": "ef1501bc9eddb7c61068206af54a899ecd6ab4e53b7b0077afe83c78fc88967b",
+    "scripts/fortress_layout.py": "e9bb2ce8ad32c3042a6f18965d6c1b4484e4f135a4c5473c03af02d131e46ac4",
+    "content/model-library/world.json": "6f6cdc8695b7f488bf2e1527bf0575b72a1873e4d8845d2f16f154681651c232",
+    "content/model-library/geometry.bin.z": "8941512c38df43e8427fb2f08ad600450099622a0d125cde29d425df2a2dd5d9"
+  },
+  "outputs": {
+    "world.json": "95e146e8834b45580bf5cdd25abc092ede4f066ad25711c64ac0788104a724ef",
+    "geometry.bin.z": "b1cb453863a209399a9083246bfbf1f6fa217019081b8b3ddd4159987dbca7ce"
+  },
+  "geometryBytes": 106045716,
+  "triangles": 1166343,
+  "trees": 420,
+  "dressing": {
+    "grass": 511,
+    "reeds": 311
+  },
+  "cells": {
+    "bedrock": 1995,
+    "upland_grass": 5511,
+    "water": 11064,
+    "tidal_mud": 999,
+    "dirt_road": 1140,
+    "bridge": 112,
+    "paddy": 683
+  },
+  "history": {
+    "kind": "historically-informed gameplay geography",
+    "confirmed": [
+      "north-south settlement",
+      "two longitudinal canals",
+      "four named land gates",
+      "coastal water-town"
+    ],
+    "approximate": [
+      "mountain silhouettes",
+      "pre-1558 village water layout",
+      "field boundaries",
+      "routes",
+      "shoreline"
+    ],
+    "fiction": [
+      "Black Shark island",
+      "mineral locations",
+      "offshore distance and layered fortress balance"
+    ]
+  }
+}

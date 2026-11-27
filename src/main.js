@@ -5,6 +5,9 @@ import { createVoxelMaterials } from './voxelTextures.js';
 import { voxelShaderTime } from './voxelEngine.js';
 import { DioramaPostFx, atmosphereTime } from './dioramaRenderer.js';
 import { DIORAMA_LOOK } from './renderStyle.js';
+import { YONGCHANG_MAP } from './yongchangMap.js';
+import { HistoricMapView } from './historicMapView.js';
+import { SeaRaidSystem } from './seaRaids.js';
 import { generateAll3DIcons } from './iconStudio.js';
 import {
   createVoxelHumanoid,
@@ -79,10 +82,10 @@ export const UNIT_SPECS = {
 const WOLF_TAUNTS = {
   start: '【嘉靖戊午·1558】宗长王叔果：“先叔王沛、堂兄王德殉国卫乡！今合族筑永昌石堡、开堡内水田，誓与父老死守桑梓！”',
   wave1: '【第一幕·戊午初警】倭酋黑鲨鬼丸：“东海浪人听令！趁他们永昌石垣未合，涉过浅滩洗劫永嘉场！”',
-  wave2: '【第二幕·水陆合围】黑鲨鬼丸：“推旱船破城槌猛撞迎川谯楼，奇兵自北湾水道偷袭侧翼！”',
+  wave2: '【第二幕·水陆合围】黑鲨鬼丸：“推旱船破城槌猛撞环海谯楼，奇兵自通市北道偷袭侧翼！”',
   wave3: '【第三幕·困城观稼】史载名局：倭寇架焙烙大筒窥探堡内——若水田充盈，则敌胆寒而我军士气倍增！',
-  wave4: '【第四幕·烽火平海】宗长王叔果：“燃空心敌台烽火！狼筅居前、藤牌护翼、鸟铳齐发，焚毁东海倭寇安宅船寨！”',
-  underAttack: '黑鲨鬼丸：“怎么可能？！小小民间乡堡竟练出如此精兵反攻我的安宅巨舰本阵？！死守水寨！！”',
+  wave4: '【第四幕·烽火平海】宗长王叔果：“燃空心敌台烽火！狼筅居前、藤牌护翼、鸟铳齐发，焚毁东海黑鲨海岛船寨！”',
+  underAttack: '黑鲨鬼丸：“怎么可能？！小小民间乡堡竟练出如此精兵反攻我的海岛船寨本阵？！死守水寨！！”',
 };
 
 class VoxelStrongholdGame {
@@ -106,6 +109,8 @@ class VoxelStrongholdGame {
     this.nightHorizon = new THREE.Color(DIORAMA_LOOK.night.horizon);
     this.scene.background = this.dayHorizon.clone();
     this.scene.fog = new THREE.Fog(this.dayHorizon, DIORAMA_LOOK.day.fogNear, DIORAMA_LOOK.day.fogFar);
+    this.atmosphereFogNear = DIORAMA_LOOK.day.fogNear;
+    this.atmosphereFogFar = DIORAMA_LOOK.day.fogFar;
     this.atmosphereColors = {};
     for (const phase of ['day', 'night']) {
       const style = DIORAMA_LOOK[phase];
@@ -125,7 +130,7 @@ class VoxelStrongholdGame {
     pmrem.dispose();
 
     // 2.5D Orthographic Isometric Diorama Camera (Clash of Clans + My Civilization feel!)
-    this.frustumSize = 15.8;
+    this.frustumSize = YONGCHANG_MAP.camera.zoom;
     const aspect = window.innerWidth / Math.max(1, window.innerHeight);
     this.camera = new THREE.OrthographicCamera(
       (-this.frustumSize * aspect) / 2,
@@ -133,9 +138,10 @@ class VoxelStrongholdGame {
       this.frustumSize / 2,
       -this.frustumSize / 2,
       0.5,
-      155
+      300
     );
-    this.camTarget = new THREE.Vector3(-16.5, 0.5, 0.2);
+    const homeView = gridToWorld(...YONGCHANG_MAP.camera.home);
+    this.camTarget = new THREE.Vector3(homeView.x, 0.4, homeView.z);
     this.camDesiredTarget = this.camTarget.clone();
     this.camYaw = -0.52;
     this.camDesiredYaw = this.camYaw;
@@ -182,6 +188,7 @@ class VoxelStrongholdGame {
     this.mats = createVoxelMaterials();
     this.debris = new VoxelDebrisSystem(this.scene, 320);
     this.world = new VoxelWorld(this.scene, this.mats, this.debris);
+    this.mapView = new HistoricMapView(this);
     this.world.onStructureDestroyed = (struct) => this.handleStructureDestroyed(struct);
     this.icons = generateAll3DIcons(this.renderer, this.mats);
 
@@ -272,6 +279,7 @@ class VoxelStrongholdGame {
     this.pendingIntroTaunt = true;
 
     this.spawnInitialForces();
+    this.seaRaids = new SeaRaidSystem(this);
     this.syncCampfirePeasants();
     this.initDioramaAmbientLife();
     this.world.updateStockpileVisuals(this.res);
@@ -391,7 +399,7 @@ class VoxelStrongholdGame {
     };
     for (let i = 0; i < this.units.length; i++) {
       const u = this.units[i];
-      if (u.hp <= 0 || u.garrisonBuilding || u.garrisonWall) continue;
+      if (u.hp <= 0 || u.garrisonBuilding || u.garrisonWall || u.seaTransit) continue;
       addBody(u, u.isSiege ? 2.2 : 1.0);
     }
     for (let i = 0; i < this.workers.length; i++) {
@@ -694,19 +702,20 @@ class VoxelStrongholdGame {
     this.enterBuildingWithLord(this.enemyLord, ek, true);
 
     // Enemy Wolf Foothill Castle Garrison
-    const wt1 = gridToWorld(48, 15);
-    const wt2 = gridToWorld(48, 24);
+    const wt1 = gridToWorld(...YONGCHANG_MAP.enemyTowers[0]);
+    const wt2 = gridToWorld(...YONGCHANG_MAP.enemyTowers[1]);
     const e1 = this.createSquad('archer', 'enemy', wt1.x, wt1.z, true);
     const e2 = this.createSquad('archer', 'enemy', wt2.x, wt2.z, true);
-    const courtyardPos = gridToWorld(50, 19);
+    const courtyardPos = gridToWorld(...YONGCHANG_MAP.enemyGuard);
     const eGuard = this.createSquad('swordsman', 'enemy', courtyardPos.x, courtyardPos.z, true);
     e1.isGarrisonGuard = e2.isGarrisonGuard = eGuard.isGarrisonGuard = true;
   }
 
   getStructureDisplayName(st) {
     if (!st) return '建筑';
+    if (st.label) return st.label;
     const special = {
-      keep: st.team === 'enemy' ? '倭寇安宅船寨' : '英桥王氏大宗祠',
+      keep: st.team === 'enemy' ? '黑鲨海岛船寨' : '英桥王氏大宗祠',
       granary: '永昌义仓',
       armory: '演武军器厅',
     };
@@ -800,7 +809,7 @@ class VoxelStrongholdGame {
         lord.hp = Math.max(180, lord.hp - 120);
         if (lord.team === 'enemy') {
           sfx.playHorn(true);
-          this.showTaunt('倭酋黑鲨鬼丸：“安宅巨舰虽毁，本头目尚在！浪人死战到底！！”');
+          this.showTaunt('倭酋黑鲨鬼丸：“岛寨本营虽毁，本头目尚在！浪人死战到底！！”');
         } else {
           this.toast('驻守建筑受损坍塌！王叔果已突围至地面继续督战！');
         }
@@ -1674,8 +1683,13 @@ class VoxelStrongholdGame {
     const targetHorizon = this.isNight ? this.nightHorizon : this.dayHorizon;
     this.scene.background.lerp(targetHorizon, blend);
     this.scene.fog.color.copy(this.scene.background);
-    this.scene.fog.near = THREE.MathUtils.lerp(this.scene.fog.near, style.fogNear, blend);
-    this.scene.fog.far = THREE.MathUtils.lerp(this.scene.fog.far, style.fogFar, blend);
+    this.atmosphereFogNear = THREE.MathUtils.lerp(this.atmosphereFogNear, style.fogNear, blend);
+    this.atmosphereFogFar = THREE.MathUtils.lerp(this.atmosphereFogFar, style.fogFar, blend);
+    // Zooming out raises the orthographic camera; that extra camera distance
+    // must not turn the overview into opaque fog.
+    const fogOffset = Math.max(0, this.frustumSize / 34 - 1) * 38;
+    this.scene.fog.near = this.atmosphereFogNear + fogOffset;
+    this.scene.fog.far = this.atmosphereFogFar + fogOffset * 1.6;
     this.scene.environmentIntensity = THREE.MathUtils.lerp(this.scene.environmentIntensity, style.environment, blend);
     this.sunLight.intensity = THREE.MathUtils.lerp(this.sunLight.intensity, style.key, blend);
     this.hemiLight.intensity = THREE.MathUtils.lerp(this.hemiLight.intensity, style.hemisphere, blend);
@@ -1718,42 +1732,23 @@ class VoxelStrongholdGame {
     this.phaseTimer = this.nightDuration;
     sfx.playBell();
 
-    const mainGateOut = gridToWorld(46, 19);
-    const northFlankEntry = gridToWorld(38, 10);
     const w = this.wave;
-
-    if (w === 1) {
-      this.showTaunt(WOLF_TAUNTS.wave1);
-      this.createSquad('spearman', 'enemy', mainGateOut.x, mainGateOut.z - 1.0, true);
-      this.createSquad('spearman', 'enemy', mainGateOut.x, mainGateOut.z + 1.0, true);
-      this.createSquad('archer', 'enemy', mainGateOut.x + 1.2, mainGateOut.z, true);
-    } else if (w === 2) {
-      this.showTaunt(WOLF_TAUNTS.wave2);
-      this.createSquad('ram', 'enemy', mainGateOut.x - 0.5, mainGateOut.z, true);
-      this.createSquad('swordsman', 'enemy', mainGateOut.x, mainGateOut.z + 1.5, true);
-      this.createSquad('spearman', 'enemy', northFlankEntry.x, northFlankEntry.z, true);
-    } else if (w === 3) {
-      if (this.fortressPaddyUnlocked) {
-        this.showTaunt('【史载·困城观稼】倭寇登台窥见永昌堡内水田稻浪井然，军心震骇！我军全员战力提升！');
-      } else {
-        this.showTaunt(WOLF_TAUNTS.wave3);
-      }
-      const eastBank = gridToWorld(38, 20);
-      this.createSquad('trebuchet', 'enemy', eastBank.x, eastBank.z, true);
-      this.createSquad('swordsman', 'enemy', mainGateOut.x, mainGateOut.z - 1.5, true);
-      this.createSquad('swordsman', 'enemy', northFlankEntry.x, northFlankEntry.z, true);
-      this.createSquad('archer', 'enemy', mainGateOut.x + 1.0, mainGateOut.z, true);
-    } else {
-      this.showTaunt(WOLF_TAUNTS.wave4);
-      const eastBank = gridToWorld(38, 20);
-      this.createSquad('trebuchet', 'enemy', eastBank.x, eastBank.z, true);
-      this.createSquad('ram', 'enemy', mainGateOut.x - 0.6, mainGateOut.z, true);
-      this.createSquad('knight', 'enemy', mainGateOut.x, mainGateOut.z + 2.0, true);
-      this.createSquad('knight', 'enemy', northFlankEntry.x, northFlankEntry.z, true);
-    }
+    if(w===1)this.showTaunt('【第一幕·海上来寇】黑鲨船队离岛来袭！乡勇守住渡口与乡桥，护住村落！');
+    else if(w===2)this.showTaunt('【第二幕·水陆合围】敌船分赴东岸与北滩，冲车与浪人正在登岸！');
+    else if(w===3)this.showTaunt(this.fortressPaddyUnlocked
+      ? '【困城观稼】敌探见乡民耕战有备，堡内稻浪井然，我军士气高涨！' : WOLF_TAUNTS.wave3);
+    else this.showTaunt('【第四幕·烽火平海】守住登陆口，整备乡勇乘舟反攻海岛船寨！');
+    const compositions = {
+      1: [{role:'spearman'},{role:'spearman'},{role:'archer'}],
+      2: [{role:'ram'},{role:'swordsman'},{role:'spearman',north:true}],
+      3: [{role:'trebuchet'},{role:'swordsman'},{role:'swordsman',north:true},{role:'archer'}],
+      4: [{role:'trebuchet'},{role:'ram'},{role:'knight'},{role:'knight',north:true}],
+    };
+    this.seaRaids.queueWave(compositions[Math.min(w,4)]);
   }
 
   updateCombat(dt) {
+    this.seaRaids.update(dt);
     this.refreshFlowFields(dt);
     const paddyBoost = this.fortressPaddyUnlocked ? 1.15 : 1.0;
     const moraleMult = (this.taxPolicy === 'generous' ? 1.2 : (this.taxPolicy === 'harsh' ? 0.92 : 1.0)) * paddyBoost;
@@ -1824,6 +1819,8 @@ class VoxelStrongholdGame {
         this.squads.splice(sIdx, 1);
         continue;
       }
+      if(sq.members.some(u=>u.seaTransit)){sq.banner.visible=false;continue;}
+      sq.banner.visible=true;
 
       if (sq.team === 'player' && !sq.hasCustomOrder && !sq.members.some((m) => m.garrisonWall || m.pendingGarrisonWall)) {
         if (this.stance === 'sally') {
@@ -1903,6 +1900,8 @@ class VoxelStrongholdGame {
       }
 
       u.atkTimer = Math.max(0, u.atkTimer - dt);
+      if(u.seaTransit)continue;
+      if(u.isLord&&this.seaRaids.moveToPort(u,dt,moraleMult))continue;
 
       // Physical Controllable / Garrisonable Sovereign Lord (True String-Pulled A* Pathing!)
       if (u.isLord) {
@@ -1980,7 +1979,7 @@ class VoxelStrongholdGame {
         // Otherwise fall through to close-quarters heroic melee defense!
       }
 
-      if (!this.wolfPanicked && u.team === 'player' && u.x > 6.5) {
+      if (!this.wolfPanicked && u.team === 'player' && Math.hypot(u.x-this.world.enemyKeep.x,u.z-this.world.enemyKeep.z)<14) {
         this.wolfPanicked = true;
         this.showTaunt(WOLF_TAUNTS.underAttack);
       }
@@ -2143,6 +2142,7 @@ class VoxelStrongholdGame {
         continue;
       }
 
+      if(this.seaRaids.moveToPort(u,dt,moraleMult))continue;
       // Navigate via Continuous Bilinear 2.5D FlowField OR Shared Squad String-Pulled A* Corridor!
       if (u.squad) {
         const sq = u.squad;
@@ -2220,7 +2220,7 @@ class VoxelStrongholdGame {
 
     for (let i = 0; i < this.units.length; i++) {
       const u = this.units[i];
-      if (u.hp <= 0 || u.garrisonWall || u.garrisonBuilding) continue;
+      if (u.hp <= 0 || u.garrisonWall || u.garrisonBuilding || u.seaTransit) continue;
       u._bodyOrder = bodies.length;
       bodies.push(u);
     }
@@ -2489,7 +2489,7 @@ class VoxelStrongholdGame {
 
     // Fast O(1) SpatialHashGrid query for ground combat enemies (skipping civilian workers/peasants!)
     this.spatialGrid.queryRadius(x, z, maxRange, (u) => {
-      if (u.isCivilian || u.team === myTeam || u.hp <= 0 || u.garrisonBuilding) return;
+      if (u.isCivilian || u.team === myTeam || u.hp <= 0 || u.garrisonBuilding || u.seaTransit) return;
       const d = Math.hypot(u.x - x, u.z - z);
       if (d > maxRange) return;
       const score = preferSiege && u.isSiege ? d * 0.35 : d;
@@ -2687,8 +2687,8 @@ class VoxelStrongholdGame {
 
     const goal = this.world.playerKeep || { x: -22, z: 0 };
     const probes = [
-      { label: '东门迎川道', start: gridToWorld(35, 20), col: 0xfacc15 },
-      { label: '北湾环海道', start: gridToWorld(33, 10), col: 0xf97316 },
+      { label: '向海东路', start: gridToWorld(...YONGCHANG_MAP.gates[0].outside), col: 0xfacc15 },
+      { label: '通市北路', start: gridToWorld(...YONGCHANG_MAP.gates[3].outside), col: 0xf97316 },
     ];
     const openLanes = [];
 
@@ -2696,16 +2696,21 @@ class VoxelStrongholdGame {
       const wps = this.pathfinder.findPathWorld(this.world, pr.start.x, pr.start.z, goal.x + 1.4, goal.z, 'enemy', {
         peaceful: true,
       });
-      if (wps && wps.length > 1) {
+      if (wps && wps.length > 0) {
         const last = wps[wps.length - 1];
         const distToKeep = Math.hypot(last.x - (goal.x + 1.4), last.z - goal.z);
-        if (distToKeep < 2.3) openLanes.push(pr.label);
+        const clearRoute = wps.every((point,i) => {
+          const previous = i ? wps[i-1] : pr.start;
+          return this.pathfinder.hasLineOfSight(this.world,previous.x,previous.z,point.x,point.z,'enemy',{peaceful:true});
+        });
+        const open = distToKeep < 2.3 && clearRoute;
+        if (open) openLanes.push(pr.label);
 
-        const pts3D = wps.map((p) => new THREE.Vector3(p.x, this.world.getElevationAtWorld(p.x, p.z) + 0.24, p.z));
+        const pts3D = [pr.start,...wps].map((p) => new THREE.Vector3(p.x, this.world.getElevationAtWorld(p.x, p.z) + 0.24, p.z));
         const curve = new THREE.CatmullRomCurve3(pts3D);
         const tubeGeo = new THREE.TubeGeometry(curve, Math.min(64, pts3D.length * 4), 0.075, 5, false);
         const tubeMat = new THREE.MeshBasicMaterial({
-          color: distToKeep < 2.3 ? 0xf59e0b : 0x4ade80,
+          color: open ? 0xf59e0b : 0x4ade80,
           transparent: true,
           opacity: 0.88,
           depthWrite: false,
@@ -2723,7 +2728,7 @@ class VoxelStrongholdGame {
     if (openLanes.length > 0) {
       this.showTaunt(`【永昌斥候禀报】${openLanes.join('、')}尚有缺口直通王氏大宗祠！请速筑花岗城墙与谯楼铁闸封堵${paddyHint}`);
     } else {
-      this.showTaunt(`【永昌斥候禀报】四门石垣与铁闸已形成严密合围！可在城前增设空心敌台与猛火油伏火壕聚歼来犯倭寇${paddyHint}`);
+      this.showTaunt(`【永昌斥候禀报】本次检查的东、北来路均未找到直通村心的通道。可继续加固城防、巡查其余方向${paddyHint}`);
     }
   }
 
@@ -2805,7 +2810,7 @@ class VoxelStrongholdGame {
       ? '🏯 海波平定 · 永昌千秋！！'
       : '💀 宗祠失守 · 戊午泣血...';
     document.getElementById('go-desc').textContent = victory
-      ? `嘉靖戊午大捷！你在第 ${this.wave} 幕率永昌义军渡河焚毁东海倭寇安宅巨舰，斩首倭酋黑鲨鬼丸！本局共筑城垣敌台 ${fortCount} 座、开垦堡内水田 ${farmCount} 亩、护佑乡民丁口 ${this.getTotalPop()} 人，英桥王氏「守望相助、保境安民」家风永载史册！`
+      ? `嘉靖戊午大捷！你在第 ${this.wave} 幕率永昌义军渡海攻破近海倭寇船寨，斩首倭酋黑鲨鬼丸！本局共筑城垣敌台 ${fortCount} 座、开垦堡内水田 ${farmCount} 亩、护佑乡民丁口 ${this.getTotalPop()} 人，英桥王氏「守望相助、保境安民」家风永载史册！`
       : '永昌防线被破！兵法建言：可在东渡口与北湾水道筑起花岗城墙与双格谯楼城门，并在城内开垦3块水田实现耕战自给！';
     modal.classList.remove('hidden');
     const toMenuBtn = document.getElementById('btn-gameover-menu');
@@ -2889,8 +2894,8 @@ class VoxelStrongholdGame {
       if (this.stance === 'attack') {
         stanceLbl.textContent = '总攻!';
         sfx.playHorn(false);
-        this.toast('全军总攻！！渡过河湾浅滩，焚毁东海倭寇安宅船寨！');
-        this.camDesiredTarget.set(10, 0.6, 0.2);
+        this.toast('全军进攻：乡勇前往东岸渡口，乘舟登陆海寨；驻防部队需先撤下城墙。');
+        this.camDesiredTarget.set(this.world.enemyKeep.x-6, 0.4, this.world.enemyKeep.z);
       } else if (this.stance === 'sally') {
         stanceLbl.textContent = '迎击';
         sfx.playHorn(false);
@@ -2967,14 +2972,18 @@ class VoxelStrongholdGame {
 
     // Camera Zone Cycle Orb (Yongchang Fortress -> River Ford -> Wokou Stronghold) + 90° Rotate!
     const zones = [
-      { lbl: '永昌', x: -19.5, y: 0.5, z: 0.0 },
-      { lbl: '渡口', x: -1.5, y: 0.2, z: 0.8 },
-      { lbl: '倭寨', x: 19.5, y: 0.7, z: 0.0 },
+      { lbl:'永昌', grid:YONGCHANG_MAP.camera.home, zoom:26 },
+      { lbl:'东路', grid:[65,49], zoom:30 },
+      { lbl:'北田', grid:[45,25], zoom:28 },
+      { lbl:'海寨', grid:[129,49], zoom:42 },
+      { lbl:'全图', grid:YONGCHANG_MAP.camera.overview, zoom:YONGCHANG_MAP.camera.overviewZoom },
     ];
     document.getElementById('btn-cam-cycle').addEventListener('click', () => {
       this.camZoneIdx = (this.camZoneIdx + 1) % zones.length;
       const z = zones[this.camZoneIdx];
-      this.camDesiredTarget.set(z.x, z.y, z.z);
+      const point=gridToWorld(...z.grid);
+      this.camDesiredTarget.set(point.x,0.4,point.z);
+      this.frustumSize=z.zoom; this.updateOrthoProjection();
       document.getElementById('cam-zone-lbl').textContent = z.lbl;
     });
     document.getElementById('cam-rotate').addEventListener('click', () => {
@@ -2984,6 +2993,7 @@ class VoxelStrongholdGame {
       if (e.key === 'q' || e.key === 'Q') this.camDesiredYaw -= Math.PI / 4;
       if (e.key === 'e' || e.key === 'E') this.camDesiredYaw += Math.PI / 4;
       if (e.key === 't' || e.key === 'T') this.runScoutPatrolCheck();
+      if ((e.key === 'm' || e.key === 'M') && this.menuState === 'play') this.mapView.toggleOverview();
       if ((e.key === 'r' || e.key === 'R') && this.selectedBuild) {
         this.rotateBuildDirection();
       }
@@ -3009,7 +3019,8 @@ class VoxelStrongholdGame {
       if (this.playerLord && this.playerLord.hp > 0) {
         this.camDesiredTarget.set(this.playerLord.x, 0.5, this.playerLord.z);
       } else {
-        this.camDesiredTarget.set(-19.5, 0.5, 0.0);
+        const home=gridToWorld(...YONGCHANG_MAP.camera.home);
+        this.camDesiredTarget.set(home.x,0.4,home.z);
       }
       crestTapCount++;
       clearTimeout(crestTapTimer);
@@ -3053,7 +3064,7 @@ class VoxelStrongholdGame {
       this.toast('🛠️ [QA] 已注入测试物资');
     });
     document.getElementById('dev-spawn-siege').addEventListener('click', () => {
-      const front = gridToWorld(23, 20);
+      const front = gridToWorld(61,49);
       this.createSquad('trebuchet', 'player', front.x, front.z - 1.5, true);
       this.createSquad('trebuchet', 'player', front.x, front.z + 1.5, true);
       this.createSquad('knight', 'player', front.x + 1.8, front.z, true);
@@ -3262,12 +3273,12 @@ class VoxelStrongholdGame {
       this.el.infoTitle.textContent = '英桥王氏族谱与永昌堡志';
       body.innerHTML = `
         <h4>一、抗倭叙事 · 嘉靖戊午保卫战（1558）</h4>
-        <p>明嘉靖三十一年至三十七年，温州永嘉场屡遭东海倭寇劫掠，英桥王氏族长<b>王沛</b>、名将<b>王德</b>叔侄先后壮烈殉国。王叔果、王叔杲兄弟遂倡议合族集资筑起<b>永昌堡</b>，南北长二百六十八丈、引河水入护城壕与城内水渠，护佑一方百姓数百年。</p>
+        <p>明嘉靖三十一年至三十七年，温州永嘉场屡遭东海倭寇劫掠，英桥王氏族长<b>王沛</b>、名将<b>王德</b>叔侄先后壮烈殉国。王叔果、王叔杲兄弟遂倡议合族集资筑起<b>永昌堡</b>，据今温州市文旅局资料，南北约738米、东西约445米，环以护城河，内凿两渠，护佑一方百姓数百年。</p>
         <h4>二、永昌城防 · 明代海防卫城规制</h4>
         <ul>
           <li><b>斜垒花岗城垣与空心敌台</b>：条石收分斜筑，神机鸟铳手登墙驻防射程大增；空心敌台可发射火箭引燃城前<b>猛火油伏火壕</b>。</li>
           <li><b>重檐谯楼城门与佛郎机炮台</b>：双身位石拱城门对我方乡民水牛车及虎蹲炮自动启闭，对倭寇千斤闸落锁；八角炮台优先轰击大筒与冲车。</li>
-          <li><b>斥候巡防（快捷键 T）</b>：派遣塘骑勘验东门迎川道与北湾环海道，即时标示防线缺口或合围状态。</li>
+          <li><b>斥候巡防（快捷键 T）</b>：派遣塘骑勘验向海东路与通市北路，即时标示防线缺口或合围状态。</li>
         </ul>
         <h4>三、家族传承 · 《英桥王氏家风碑》实时进度</h4>
         <ul>
@@ -3407,7 +3418,7 @@ class VoxelStrongholdGame {
     // 2.5D Micro-Voxel Heightfield Ray-March + 6-Step Bisection:
     // Guarantees sub-centimeter grid picking on hills (+3.5m), terraces (+0.5m), valley plains (0m) & riverbeds (-0.35m)!
     if (this.world && dir.y < -1e-4) {
-      const yMax = 5.6;
+      const yMax = this.world.maxTerrainHeight + 0.1;
       const yMin = -0.75;
       const tStart = Math.max(0, (yMax - orig.y) / dir.y);
       const tEnd = Math.max(tStart, (yMin - orig.y) / dir.y);
@@ -3473,7 +3484,7 @@ class VoxelStrongholdGame {
 
     this.canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
-      this.frustumSize = THREE.MathUtils.clamp(this.frustumSize + e.deltaY * 0.014, 7.5, 29.0);
+      this.frustumSize = THREE.MathUtils.clamp(this.frustumSize + e.deltaY * 0.022, 7.5, YONGCHANG_MAP.camera.maxZoom);
       this.updateOrthoProjection();
     }, { passive: false });
 
@@ -3492,8 +3503,8 @@ class VoxelStrongholdGame {
       const wpp = this.frustumSize / Math.max(1, window.innerHeight);
       this.camDesiredTarget.addScaledVector(groundRight, -dx * wpp);
       this.camDesiredTarget.addScaledVector(groundFwd, (dy * wpp) / sinPitch);
-      this.camDesiredTarget.x = THREE.MathUtils.clamp(this.camDesiredTarget.x, -26, 26);
-      this.camDesiredTarget.z = THREE.MathUtils.clamp(this.camDesiredTarget.z, -15, 15);
+      this.camDesiredTarget.x = THREE.MathUtils.clamp(this.camDesiredTarget.x, -GRID_W/2+4, GRID_W/2-4);
+      this.camDesiredTarget.z = THREE.MathUtils.clamp(this.camDesiredTarget.z, -GRID_H/2+4, GRID_H/2-4);
     };
 
     this.canvas.addEventListener('pointerdown', (e) => {
@@ -3600,7 +3611,7 @@ class VoxelStrongholdGame {
         const midY = (pts[0].y + pts[1].y) * 0.5;
         if (this.prevPinchDist && curDist > 10) {
           const ratio = this.prevPinchDist / curDist;
-          this.frustumSize = THREE.MathUtils.clamp(this.frustumSize * ratio, 7.5, 29.0);
+          this.frustumSize = THREE.MathUtils.clamp(this.frustumSize * ratio, 7.5, YONGCHANG_MAP.camera.maxZoom);
           this.updateOrthoProjection();
         }
         if (this.prevTwoFingerMid) {
@@ -4094,7 +4105,7 @@ class VoxelStrongholdGame {
     // 2. Damaged Units, Siege Engines & Field Lords (0 < hp < maxHp)!
     for (let i = 0; i < this.units.length; i++) {
       const u = this.units[i];
-      if (!u || u.hp <= 0 || u.garrisonBuilding) continue;
+      if (!u || u.hp <= 0 || u.garrisonBuilding || u.seaTransit) continue;
 
       const isDamaged = u.hp < u.maxHp - 0.5;
       if (!isDamaged && !u.isLord) {
@@ -4181,17 +4192,17 @@ class VoxelStrongholdGame {
     this.runNavAudit = () => {
       const pk = this.world.playerKeep || { x: -22, z: 0 };
       const ek = this.world.enemyKeep || { x: 22, z: 0 };
-      const fordMain = gridToWorld(30, 19);
-      const fordNorth = gridToWorld(31, 10);
-      const stoneMine = this.world.stoneNodes[0] || gridToWorld(14, 9);
-      const ironMine = this.world.ironNodes[0] || gridToWorld(16, 29);
+      const fordMain = gridToWorld(...YONGCHANG_MAP.gates[0].outside);
+      const fordNorth = gridToWorld(...YONGCHANG_MAP.gates[3].outside);
+      const stoneMine = this.world.stoneNodes[0] || gridToWorld(...YONGCHANG_MAP.deposits.stone[0]);
+      const ironMine = this.world.ironNodes[0] || gridToWorld(...YONGCHANG_MAP.deposits.iron[0]);
 
       const routes = [
-        { name: 'Campfire -> Main River Ford', ax: this.world.campfirePos.x, az: this.world.campfirePos.z, bx: fordMain.x, bz: fordMain.z, peaceful: false },
-        { name: 'Campfire -> North Ford', ax: this.world.campfirePos.x, az: this.world.campfirePos.z, bx: fordNorth.x, bz: fordNorth.z, peaceful: false },
-        { name: 'Main Ford -> East Wolf Courtyard', ax: fordMain.x, az: fordMain.z, bx: ek.x - 4, bz: ek.z, peaceful: false },
-        { name: 'North Quarry -> Stockpile (Ox-Cart)', ax: stoneMine.x, az: stoneMine.z + 0.8, bx: this.world.stockpilePos.x, bz: this.world.stockpilePos.z, peaceful: true, isLarge: true },
-        { name: 'South Iron -> Armory (Miner)', ax: ironMine.x, az: ironMine.z - 0.8, bx: this.world.armoryPos.x, bz: this.world.armoryPos.z, peaceful: true },
+        { name: 'Village -> East Approach', ax: this.world.campfirePos.x, az: this.world.campfirePos.z, bx: fordMain.x, bz: fordMain.z, peaceful: false },
+        { name: 'Village -> North Approach', ax: this.world.campfirePos.x, az: this.world.campfirePos.z, bx: fordNorth.x, bz: fordNorth.z, peaceful: false },
+        { name: 'East Approach -> Embarkation Pier', ax: fordMain.x, az: fordMain.z, bx: YONGCHANG_MAP.ports.mainland.rally[0]-GRID_W/2, bz: YONGCHANG_MAP.ports.mainland.rally[1]-GRID_H/2, peaceful: false },
+        { name: 'West Quarry -> Stockpile (Ox-Cart)', ax: stoneMine.x, az: stoneMine.z + 0.8, bx: this.world.stockpilePos.x, bz: this.world.stockpilePos.z, peaceful: true, isLarge: true },
+        { name: 'West Iron -> Armory (Miner)', ax: ironMine.x, az: ironMine.z - 0.8, bx: this.world.armoryPos.x, bz: this.world.armoryPos.z, peaceful: true },
         { name: 'Player Lord -> Granary', ax: pk.x + 2, az: pk.z, bx: this.world.granaryPos.x, bz: this.world.granaryPos.z, peaceful: false },
       ];
 
@@ -4280,11 +4291,12 @@ class VoxelStrongholdGame {
     const shakeX = this.camShake > 0 ? (Math.random() - 0.5) * this.camShake : 0;
     const shakeZ = this.camShake > 0 ? (Math.random() - 0.5) * this.camShake : 0;
 
-    // Orbit offset at constant 27m height & 27m horizontal radius using live camYaw!
-    const horizDist = 27.0;
+    // Pull back the orthographic camera for the map overview while retaining pitch.
+    const orbitScale=Math.max(1,this.frustumSize/34);
+    const horizDist = 27.0*orbitScale;
     this.camera.position.set(
       this.camTarget.x + shakeX + Math.sin(this.camYaw) * horizDist,
-      27.0,
+      27.0*orbitScale,
       this.camTarget.z + shakeZ + Math.cos(this.camYaw) * horizDist
     );
     this.camera.lookAt(this.camTarget.x + shakeX, this.camTarget.y, this.camTarget.z + shakeZ);
@@ -4305,6 +4317,7 @@ class VoxelStrongholdGame {
     if (this.hudTick > 0.18) {
       this.hudTick = 0;
       this.updateHUD();
+      this.mapView.draw();
     }
 
     this.postFx.render(rawDt);

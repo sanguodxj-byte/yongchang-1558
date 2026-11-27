@@ -20,6 +20,10 @@ export const DIORAMA_LOOK = {
     vignette: 0.13, grain: 0, outline: 0.20,
     contactRadius: 0.64, contactStrength: 1.65,
   },
-  water: { shallow: '#67978a', deep: '#244e56', roughness: 0.38, environment: 0.45 },
+  water: {
+    shallow: '#67978a', deep: '#244e56', roughness: 0.38, environment: 0.45,
+    contourStrength: 0.10, normalStrength: 0.055, foamStrength: 0.42,
+  },
+  terrain: { grassFacet: 0.12, sandFacet: 0.08, rockFacet: 0.18 },
   shadow: { mapSize: 2048, extent: 26, radius: 2.4, bias: -0.00025, normalBias: 0.028 },
 };

@@ -12,6 +12,7 @@ export const VMAT = {
   METAL: 8,
   PITCH: 9,
   PLASTER: 10,
+  CLOTH: 11,
 };
 
 let sharedLowPolyMat = null;
@@ -56,7 +57,7 @@ export function getSharedVoxelMaterial() {
       roughness: 0.82,
       metalness: 0.04,
     });
-    sharedLowPolyMat.customProgramCacheKey = () => 'yongchang-historical-midpoly-v3';
+    sharedLowPolyMat.customProgramCacheKey = () => 'yongchang-historical-midpoly-v4';
     sharedLowPolyMat.onBeforeCompile = (shader) => {
       shader.uniforms.uDioramaTime = voxelShaderTime;
       shader.vertexShader = shader.vertexShader
@@ -149,6 +150,10 @@ export function getSharedVoxelMaterial() {
               float stain = lpNoise2(vec2((vLpObjPos.x + vLpObjPos.z) * 4.2, vLpObjPos.y * 3.6));
               float damp = 1.0 - smoothstep(0.05, 0.45, vLpObjPos.y);
               diffuseColor.rgb *= (1.0 + (stain - 0.5) * 0.11) * mix(1.0, 0.82, damp * 0.7);
+            } else if (matId == 11) {
+              // Sailcloth uses broad weathering, never the timber grain.
+              float wear = lpNoise2(vLpObjPos.xz * 3.1 + vLpObjPos.y * 0.7);
+              diffuseColor.rgb *= 0.94 + wear * 0.10;
             } else {
               // GRASS / CLIFF / LEAVES: Natural earthy mottling
               float fine = lpNoise2(vLpWorldPos.xz * 2.8) - 0.5;
@@ -174,6 +179,7 @@ export function getSharedVoxelMaterial() {
             else if (rMat == 5) roughnessFactor = 0.70;
             else if (rMat == 4) roughnessFactor = 0.80;
             else if (rMat == 1 || rMat == 6) roughnessFactor = 0.86;
+            else if (rMat == 11) roughnessFactor = 0.94;
             else roughnessFactor = 0.90;
           }`
         );
@@ -593,7 +599,7 @@ export class PolyBuilder {
       const aMid = (a0 + a1) * 0.5;
       const sy = cy + Math.sin(aMid) * (rInner * 0.52);
       const sz = cz + Math.cos(aMid) * (rInner * 0.52);
-      this.box(cx, sy, sz, width * 0.42, rInner * 0.96, 0.022, woodHex, { rotX: -aMid, matId: VMAT.TIMBER });
+      this.box(cx, sy, sz, width * 0.42, rInner * 0.96, 0.022, woodHex, { rotX: Math.PI / 2 - aMid, matId: VMAT.TIMBER });
     }
     // 2. Protruding Wooden Hub & Iron Linchpin Cap
     this.cylinderAxis(cx, cy, cz, radius * 0.24, radius * 0.24, width * 1.55, 10, 'x', hubHex, { matId: VMAT.METAL });

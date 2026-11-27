@@ -2,14 +2,16 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { PolyBuilder, VoxelGrid, VMAT, voxelHash, tintHex, getSharedVoxelMaterial } from './voxelEngine.js';
 import { prefabs } from './voxelPrefabs.js';
+import { buildRaiderHarbor } from './raiderHarbor.js';
 import { createDioramaCloudSeaAndOcean, atmosphereTime } from './dioramaRenderer.js';
+import { DIORAMA_LOOK } from './renderStyle.js';
+import { YONGCHANG_MAP, MAP_BRIDGES, insideFort, bridgeAt, islandRadius,
+  mapWaterAt, isMapRoad, isMapPlaza, isMapField, reservedForAccess } from './yongchangMap.js';
 
-export const GRID_W = 64;
-export const GRID_H = 40;
-const T_SUB = 4;        // 256 x 160 high-resolution micro-voxel topography!
+export const GRID_W = YONGCHANG_MAP.width;
+export const GRID_H = YONGCHANG_MAP.height;
+const T_SUB = 4;        // Four collision/shore samples per logical map cell.
 const T_VOX = 0.25;     // 0.25m micro-voxel step
-const T_BASE_Y = 5;     // yVoxel=5 -> world y = 0.0m
-const T_MAX_Y = 28;     // Up to +5.75m natural mountain ridges
 
 const boxGeo = new THREE.BoxGeometry(1, 1, 1);
 
@@ -48,7 +50,17 @@ export const BUILDINGS = {
     id: 'quarry', name: '大罗山采石场', cat: 'econ', mode: 'single',
     reqBiome: 'limestone',
     cost: { wood: 10 }, hp: 240, height: 1.6,
-    desc: '【北麓花岗岩旁】石匠凿条石码放，水牛平板车拉往营造场',
+    desc: '石匠持镐采石并运往可达堆放场；附近独立建造绑牛桩可增产',
+  },
+  stockpile: {
+    id: 'stockpile', name: '营造物资堆放场', cat: 'econ', mode: 'single', footprint: [2, 2],
+    cost: { wood: 8, stone: 4 }, hp: 280, height: 0.45,
+    desc: '占地2×2；收存木、石、铁、油。工人选择可达的最近堆场，缩短运送路程',
+  },
+  oxPost: {
+    id: 'oxPost', name: '水牛绑牛桩', cat: 'econ', mode: 'single', footprint: [2, 2],
+    cost: { wood: 12, gold: 25 }, hp: 220, height: 0.85, boostRadius: 7,
+    desc: '为7格内一座可达采石场提供牛车，石料产量+50%，每车运12石；同一石场不叠加',
   },
   farm: {
     id: 'farm', name: '江南水车稻田', cat: 'econ', mode: 'single',
@@ -191,11 +203,12 @@ export class VoxelWorld {
     this.granaryPos = { x: 0, y: 0.5, z: 0 };
     this.armoryPos = { x: 0, y: 0.5, z: 0 };
     this.subElev = null;
+    this.maxTerrainHeight = 0.4;
     this.cellFloraRefs = new Map();
     this._zeroDummy = new THREE.Matrix4().makeScale(0, 0, 0);
 
     this.compileRealisticBasinTerrain();
-    createDioramaCloudSeaAndOcean(this.scene, GRID_W, GRID_H);
+    createDioramaCloudSeaAndOcean(this.scene, GRID_W, GRID_H, { eastOnly: true });
     this.initNaturalForestsDepositsAndCastles();
   }
 
@@ -238,166 +251,65 @@ export class VoxelWorld {
     return supportY;
   }
 
-  /**
-   * Natural River-Valley Geomorphology Model (Zero artificial axis-aligned boxes!):
-   * - Meandering river cuts the lowest thalweg through the valley floor (x ~ 29..35) with two natural shallow gravel fords.
-   * - Smooth rolling foothills & mountain ridges frame the northern & southern horizons, with organic spurs extending inward.
-   * - Gently leveled natural river terraces on West (Player starting clearing) & East (Rival foothill stronghold) so castles sit naturally!
-   */
+  // West mountain foothills descend to the coastal plain. The fortified town
+  // occupies the plain; it is not an island encircled by invented ridgelines.
   evaluateRawElevation(fx, fz) {
-    const macroN = fbm2D(fx * 0.055, fz * 0.055, 101);
-    const midN = fbm2D(fx * 0.14, fz * 0.14, 203);
-
-    // 1. Natural Meandering River Centerline & Width
-    const riverX = 31.0 + Math.sin(fz * 0.145 - 0.6) * 4.4 + (macroN - 0.5) * 2.6;
-    const distRiver = Math.abs(fx - riverX);
-
-    // Two Natural Shallow Gravel Fords where the river widens over hard gravel bars (South-Central z~21.5 & North Bend z~10.5)!
-    const fordMain = Math.exp(-Math.pow((fz - 21.5) / 2.2, 2));
-    const fordNorth = Math.exp(-Math.pow((fz - 10.5) / 1.9, 2));
-    const fordFactor = Math.max(fordMain, fordNorth);
-    const riverHalfW = 1.95 + fordFactor * 0.75 + (midN - 0.5) * 0.35;
-
-    // 2. Valley Floor Base Elevation: rises gently away from the river channel (natural alluvial floodplain!)
-    let h = smoothstep(riverHalfW, riverHalfW + 14.0, distRiver) * 0.75;
-
-    // 3. Natural Mountain Ridges along North & South watersheds + West/East headlands (organic FBM ridge lines!)
-    const northRidgeLine = 5.2 + (macroN - 0.45) * 5.8 + Math.sin(fx * 0.12) * 2.2;
-    if (fz < northRidgeLine + 7.5) {
-      // Carve river headwater gorge where river enters from the north!
-      const riverGorgeMask = smoothstep(2.2, 7.5, distRiver);
-      const tN = smoothstep(northRidgeLine + 7.5, northRidgeLine - 2.0, fz);
-      h += tN * (3.6 + midN * 2.1) * riverGorgeMask;
+    const macroN = fbm2D(fx * 0.065, fz * 0.065, 101);
+    const midN = fbm2D(fx * 0.16, fz * 0.16, 203);
+    const westRidge = 14 + Math.sin(fz * 0.09) * 2.5 + (macroN - 0.5) * 3;
+    const mountain = 1 - smoothstep(westRidge - 5, westRidge + 10, fx);
+    let h = 0.40 + mountain * (5.5 + midN * 5.5);
+    if (fx > 22) h += (macroN - 0.45) * 0.12;
+    const hydro = mapWaterAt(fx, fz);
+    const bridge = bridgeAt(fx, fz);
+    const road = isMapRoad(fx, fz);
+    const plaza = isMapPlaza(fx, fz);
+    const field = isMapField(fx, fz);
+    if (insideFort(fx,fz,3) || road || plaza || field) h = 0.40;
+    // Shore slopes into the eastern sea; the navigable supply road remains flat.
+    if (fx > hydro.coast - 3 && !road && !plaza) h = 0.4 - smoothstep(hydro.coast-3,hydro.coast,fx)*0.32;
+    if(hydro.island) {
+      const radius=islandRadius(fx,fz);
+      const ridge=Math.exp(-((fx-139)**2/20+(fz-38)**2/48))*2.4;
+      h=0.4+ridge;
+      if(road||plaza)h=0.4;
+      else h=0.4+ridge*smoothstep(.57,.8,radius);
+      if(radius>.88)h=THREE.MathUtils.lerp(h,.08,smoothstep(.88,1,radius));
     }
-
-    const southRidgeLine = GRID_H - 5.0 - (fbm2D(fx * 0.07, 9.3, 307) - 0.45) * 5.5 - Math.cos(fx * 0.11) * 2.0;
-    if (fz > southRidgeLine - 7.5) {
-      const riverMouthMask = smoothstep(2.2, 7.5, distRiver);
-      const tS = smoothstep(southRidgeLine - 7.5, southRidgeLine + 2.0, fz);
-      h += tS * (3.4 + midN * 2.0) * riverMouthMask;
-    }
-
-    // Western & Eastern highland backdrops (curved natural amphitheaters, NOT rectangular walls!)
-    const westBackLine = 3.8 + Math.pow((fz - 20) / 15.0, 2) * 3.5 + (midN - 0.5) * 2.4;
-    if (fx < westBackLine + 5.0) {
-      const tW = smoothstep(westBackLine + 5.0, westBackLine - 2.0, fx);
-      h += tW * (3.2 + macroN * 1.8);
-    }
-
-    const eastBackLine = GRID_W - 4.0 - Math.pow((fz - 20) / 15.5, 2) * 3.2 + (midN - 0.5) * 2.4;
-    if (fx > eastBackLine - 5.5) {
-      const tE = smoothstep(eastBackLine - 5.5, eastBackLine + 2.0, fx);
-      h += tE * (3.5 + macroN * 1.9);
-    }
-
-    // One natural rolling hillock dividing the northern ford trail from the main southern valley!
-    const hillDist = Math.hypot((fx - 26.5) * 0.85, (fz - 15.2) * 1.05) + (midN - 0.5) * 1.4;
-    if (hillDist < 4.8) {
-      h += Math.pow(1 - hillDist / 4.8, 1.8) * 2.35;
-    }
-
-    // 4. Gently flatten two organic river-terrace clearings so castles sit on realistic level ground without square edges!
-    const dPlayerClearing = Math.hypot((fx - 13.0) / 7.5, (fz - 20.5) / 6.5) + (midN - 0.5) * 0.16;
-    if (dPlayerClearing < 1.35) {
-      const blend = 1 - smoothstep(0.65, 1.35, dPlayerClearing);
-      h = THREE.MathUtils.lerp(h, 0.50, blend);
-    }
-
-    const dEnemyClearing = Math.hypot((fx - 51.5) / 7.2, (fz - 20.0) / 6.8) + (midN - 0.5) * 0.16;
-    if (dEnemyClearing < 1.35) {
-      const blend = 1 - smoothstep(0.65, 1.35, dEnemyClearing);
-      h = THREE.MathUtils.lerp(h, 0.75, blend);
-    }
-
-    // 5. Carve the River Channel & Gravel Fords!
-    let isWater = false;
-    let isFord = false;
-    if (distRiver < riverHalfW) {
-      if (fordFactor > 0.48) {
-        // Natural shallow gravel-bar river crossing!
-        isFord = true;
-        h = -0.02;
-      } else {
-        isWater = true;
-        const depthT = 1 - Math.pow(distRiver / riverHalfW, 2);
-        h = -0.28 - depthT * 0.42;
-      }
-    }
-
-    return { h, distRiver, riverHalfW, isWater, isFord, macroN, midN };
+    if(bridge)h=0.4;
+    if (hydro.water && !bridge) h = -0.64;
+    return { h, isWater: hydro.water, bridge, road, plaza, field, macroN, midN,
+      coast: hydro.coast, island:hydro.island,isFord:false };
   }
 
   sampleTopography(fx, fz) {
     const c = this.evaluateRawElevation(fx, fz);
-    // Measure local terrain gradient (slope) to expose natural bedrock on steep faces!
-    const hx = this.evaluateRawElevation(fx + 0.5, fz).h - c.h;
-    const hz = this.evaluateRawElevation(fx, fz + 0.5).h - c.h;
-    const slope = Math.hypot(hx, hz) / 0.5;
-
-    // Natural Geological Outcrop Zones along real foothill fault lines:
-    const dLimestone = Math.hypot((fx - 15.5) * 0.8, (fz - 9.2) * 1.1) + (c.midN - 0.5) * 1.4;
-    const dIron = Math.hypot((fx - 16.0) * 0.8, (fz - 31.2) * 1.1) + (c.midN - 0.5) * 1.4;
-    const dPitchSeep = Math.hypot(fx - 26.2, fz - 28.5) + (c.midN - 0.5) * 0.9;
-
-    // Subtle dirt country track winding naturally from West Keep across the main river ford toward East Valley!
-    const trackZ = 21.3 + Math.sin((fx - 13.0) * 0.11) * 1.4 + (c.midN - 0.5) * 0.6;
-    const onDirtTrack = fx >= 11.5 && fx <= 50.0 && Math.abs(fz - trackZ) < 0.85 && !c.isWater && c.h < 1.15;
-
-    let matType = 'upland_grass';
-    let biome = 'plains';
-
-    if (c.isWater) {
-      matType = 'water';
-      biome = 'river';
-    } else if (c.isFord) {
-      matType = 'ford';
-      biome = 'ford';
-    } else if (dPitchSeep < 2.1 && c.h < 0.65) {
-      matType = 'pitchBog';
-      biome = 'pitchBog';
-    } else if (dLimestone < 3.6 && c.h < 2.2) {
-      matType = 'limestone';
-      biome = 'limestone';
-    } else if (dIron < 3.5 && c.h < 2.2) {
-      matType = 'iron';
-      biome = 'iron';
-    } else if (slope > 0.52 || c.h > 2.35) {
-      // Steep slopes or high alpine crags naturally expose layered bedrock!
-      matType = c.h > 3.1 && slope < 0.48 ? 'alpine_grass' : 'bedrock';
-      biome = c.h > 1.65 ? 'cliff' : 'hill';
-    } else if (onDirtTrack) {
-      matType = 'dirt_road';
-      biome = 'road';
-    } else if (c.distRiver < c.riverHalfW + 1.05 && c.h < 0.35) {
-      // Realistic sandy/gravelly river beach bar along water's edge!
-      matType = 'river_sand';
-      biome = 'beach';
-    } else if (c.distRiver < c.riverHalfW + 8.2 && c.h <= 0.62) {
-      // Moisture-rich dark emerald alluvial meadow along the river floodplain (Farm zone!)
-      matType = 'oasis';
-      biome = 'oasis';
-    } else if (fx > 38.0 && c.distRiver > 8.5 && c.h < 1.3 && c.macroN > 0.48) {
-      // Semi-arid warm steppe/loess transition on eastern rain-shadow flank
-      matType = 'dry_steppe';
-      biome = 'plains';
-    } else {
-      // Natural sunlit rolling pasture grass
-      matType = 'upland_grass';
-      biome = c.h > 1.65 ? 'cliff' : 'plains';
+    const hx = this.evaluateRawElevation(fx+0.5,fz).h - c.h;
+    const hz = this.evaluateRawElevation(fx,fz+0.5).h - c.h;
+    const slope = Math.hypot(hx,hz) / 0.5;
+    let matType = 'upland_grass', biome = 'plains';
+    if (c.bridge) { matType = 'bridge'; biome = 'road'; }
+    else if (c.isWater) { matType = 'water'; biome = 'river'; }
+    else if (c.road || c.plaza) { matType = 'dirt_road'; biome = 'road'; }
+    else if (c.field) { matType = 'paddy'; biome = 'paddy'; }
+    else if (Math.hypot(fx-21,fz-41)<3.3) { matType='limestone'; biome='limestone'; }
+    else if (Math.hypot(fx-21,fz-63)<3.1) { matType='iron'; biome='iron'; }
+    else if (Math.hypot(fx-81,fz-65)<2.5) { matType='pitchBog'; biome='pitchBog'; }
+    else if(c.island) {
+      if(c.h>1.1){matType='bedrock';biome='cliff';}
+      else if(islandRadius(fx,fz)>.82){matType='river_sand';biome='beach';}
+      else {matType='oasis';biome='oasis';}
     }
-
-    return {
-      elev: c.h,
-      matType,
-      biome,
-      isBridge: false,
-      isFord: c.isFord,
-      slope,
-    };
+    else if (fx > c.coast - 3.5) { matType='river_sand'; biome='beach'; }
+    else if (c.h > 2.35 || (slope > 0.52 && fx < 23)) {
+      matType = c.h > 4 && slope < 0.48 ? 'alpine_grass' : 'bedrock'; biome='cliff';
+    } else if (insideFort(fx,fz)) { matType='oasis'; biome='oasis'; }
+    return { elev:c.bridge ? 0.4 : c.h, matType, biome, isBridge:!!c.bridge,
+      isFord:false, slope, isWater:c.isWater, inPlaza:c.plaza };
   }
 
   compileRealisticBasinTerrain() {
-    // 1. Populate logical 64x40 navigation & building grid with smooth continuous elevation!
+    // Logical navigation and building data share the historical layout sampler.
     for (let gx = 0; gx < GRID_W; gx++) {
       this.cells[gx] = [];
       for (let gz = 0; gz < GRID_H; gz++) {
@@ -409,7 +321,7 @@ export class VoxelWorld {
           elev: smoothElev,
           ground: s.matType === 'water' ? 'water' : s.matType,
           biome: s.biome,
-          isBridge: false,
+          isBridge: s.isBridge,
           isFord: s.isFord,
           structure: null,
           tree: null,
@@ -423,7 +335,7 @@ export class VoxelWorld {
       }
     }
 
-    // 2. Populate 256 x 160 continuous height lookup (`subElev`) & water mask (zero stair-stepping!)
+    // Continuous height lookup and water mask, sized from the logical map.
     const totalSubX = GRID_W * T_SUB;
     const totalSubZ = GRID_H * T_SUB;
     const waterColumns = [];
@@ -436,9 +348,9 @@ export class VoxelWorld {
         const fx = (vx + 0.5) / T_SUB;
         const s = this.sampleTopography(fx, fz);
         const idx = lz * totalSubX + vx;
-        if (s.matType === 'water') {
+        if (s.matType === 'water' || s.isBridge) {
           waterMask[idx] = 1;
-          this.subElev[idx] = -0.35;
+          this.subElev[idx] = s.isBridge ? s.elev : -0.35;
           waterColumns.push({ vx, vz: lz });
         } else {
           this.subElev[idx] = s.elev;
@@ -446,9 +358,9 @@ export class VoxelWorld {
       }
     }
 
-    // 3. Sculpt High-Detail Grounded Ming Jiangnan Landscape (192x120 mesh = ~46,000 tris, smooth valleys + crisp granite cliffs!)
-    const NX = GRID_W * 3; // 192 (0.333m vertex spacing)
-    const NZ = GRID_H * 3; // 120
+    // Three vertices per map unit preserve the existing terrain detail scale.
+    const NX = GRID_W * 3;
+    const NZ = GRID_H * 3;
     const stepX = GRID_W / NX;
     const stepZ = GRID_H / NZ;
     const vertPos = new Array((NX + 1) * (NZ + 1));
@@ -461,20 +373,22 @@ export class VoxelWorld {
         const fz = iz * stepZ;
         const s = this.sampleTopography(Math.min(GRID_W - 0.01, fx), Math.min(GRID_H - 0.01, fz));
         const isEdge = ix === 0 || ix === NX || iz === 0 || iz === NZ;
-        const inPlayerPlaza = fx >= 7.6 && fx <= 15.8 && fz >= 14.0 && fz <= 24.8;
-        const inEnemyPlaza = fx >= 47.5 && fx <= 57.2 && fz >= 14.8 && fz <= 24.8;
-        const jitScale = (isEdge || inPlayerPlaza || inEnemyPlaza || s.isFord) ? 0.0 : 0.055;
+        const inPlayerPlaza = s.inPlaza && insideFort(fx,fz);
+        const inEnemyPlaza = s.inPlaza && !insideFort(fx,fz);
+        // Straight stone embankments remain aligned with the water/bridge grid.
+        const jitScale = (isEdge || fx > 22 || s.isBridge) ? 0.0 : 0.055;
         const jx = (voxelHash(ix, 11, iz, 307) - 0.5) * 2 * jitScale;
         const jz = (voxelHash(ix, 23, iz, 311) - 0.5) * 2 * jitScale;
 
         let vy = s.elev;
-        if (s.matType === 'water') {
+        if (s.matType === 'water' || s.isBridge) {
           vy = -0.64;
         }
         const wx = -GRID_W * 0.5 + fx + jx;
         const wz = -GRID_H * 0.5 + fz + jz;
         const vIdx = iz * (NX + 1) + ix;
         vertPos[vIdx] = [wx, vy, wz];
+        this.maxTerrainHeight = Math.max(this.maxTerrainHeight,vy);
         vertInfo[vIdx] = { ...s, inPlayerPlaza, inEnemyPlaza };
       }
     }
@@ -503,23 +417,24 @@ export class VoxelWorld {
       const gxF = cx + GRID_W * 0.5;
       const gzF = cz + GRID_H * 0.5;
       const mTone = fbm2D(gxF * 0.25, gzF * 0.25, 733);
-      if (s.matType === 'water') return { hex: 0x8f7e63, mat: VMAT.SAND };
+      if (s.matType === 'water' || s.isBridge) return { hex: 0x8f7e63, mat: VMAT.SAND };
+      if (s.matType === 'paddy') return { hex: mTone > 0.48 ? 0x89905b : 0x7d8552, mat: VMAT.GRASS };
 
       // Smoothly feathered bluestone courtyard border (eliminates sawtooth triangle edges!)
-      const pDistX = Math.max(7.8 - gxF, 0, gxF - 15.6);
-      const pDistZ = Math.max(14.2 - gzF, 0, gzF - 24.6);
+      const pDistX = Math.max(42 - gxF, 0, gxF - 50);
+      const pDistZ = Math.max(42 - gzF, 0, gzF - 48);
       const pEdge = Math.hypot(pDistX, pDistZ) + (mTone - 0.5) * 0.55;
       const plazaBlend = 1.0 - smoothstep(0.0, 1.35, pEdge);
 
       let base = { hex: mTone > 0.55 ? 0x73864b : (mTone < 0.40 ? 0x5f733e : 0x697d45), mat: VMAT.GRASS };
-      if (s.inEnemyPlaza) base = { hex: mTone > 0.5 ? 0x7c7469 : 0x70685e, mat: VMAT.COBBLE };
+      if (s.inEnemyPlaza) base = { hex: mTone > 0.5 ? 0xa28f6b : 0x938360, mat: VMAT.SAND };
       else if (s.matType === 'pitchBog') base = { hex: mTone > 0.5 ? 0x6b6252 : 0x5d5547, mat: VMAT.SAND };
       else if (s.matType === 'limestone') base = { hex: mTone > 0.5 ? 0xa8a399 : 0x99948a, mat: VMAT.CLIFF };
       else if (s.matType === 'iron') base = { hex: mTone > 0.60 ? 0xa6653c : 0x78685c, mat: VMAT.CLIFF };
       else if (s.matType === 'ford' || s.matType === 'river_sand') {
         base = { hex: s.isFord ? (mTone > 0.5 ? 0xa89f90 : 0x999082) : 0xbdae8e, mat: VMAT.SAND };
       } else if (s.matType === 'dirt_road') {
-        base = { hex: mTone > 0.45 ? 0xb2a48d : 0xa69880, mat: VMAT.COBBLE };
+        base = { hex: mTone > 0.45 ? 0xa79573 : 0x9d8d6c, mat: VMAT.SAND };
       } else if (slopeY < 0.80 || s.matType === 'bedrock') {
         if (slopeY > 0.90 && s.elev < 2.6) base = { hex: mTone > 0.5 ? 0x657842 : 0x6e8249, mat: VMAT.GRASS };
         else base = { hex: mTone > 0.55 ? 0x8a847b : (mTone < 0.38 ? 0x6e6962 : 0x7c776e), mat: VMAT.CLIFF };
@@ -532,10 +447,10 @@ export class VoxelWorld {
       }
 
       if (plazaBlend > 0.02 && slopeY > 0.85) {
-        const pCol = mTone > 0.5 ? 0xb5a78f : 0xa99b84;
+        const pCol = mTone > 0.5 ? 0xb3a17e : 0xa69573;
         return {
           hex: mixHex(base.hex, pCol, plazaBlend),
-          mat: plazaBlend > 0.48 ? VMAT.COBBLE : base.mat,
+          mat: plazaBlend > 0.48 ? VMAT.SAND : base.mat,
         };
       }
       return base;
@@ -604,7 +519,10 @@ export class VoxelWorld {
       const iz = Math.round((pb.pos[i + 2] + GRID_H * 0.5) / stepZ);
       const color = blendedColors[iz * (NX + 1) + ix];
       const face = Math.floor(i / 9);
-      const facet = 1 + (voxelHash(face, 3, 7, 911) - 0.5) * 0.028;
+      const mat = pb.mat[i / 3];
+      const variation = mat === VMAT.CLIFF ? DIORAMA_LOOK.terrain.rockFacet
+        : mat === VMAT.SAND ? DIORAMA_LOOK.terrain.sandFacet : DIORAMA_LOOK.terrain.grassFacet;
+      const facet = 1 + (voxelHash(face, 3, 7, 911) - 0.5) * variation;
       pb.col[i] = color.r * facet;
       pb.col[i + 1] = color.g * facet;
       pb.col[i + 2] = color.b * facet;
@@ -691,38 +609,27 @@ export class VoxelWorld {
   }
 
   initNaturalForestsDepositsAndCastles() {
-    // 1. Player Starting Clearing: Spaced-out Basic Castle Core with generous 2-3 tile walkways (ZERO building overlap!)
-    this.playerKeep = this.buildGrandKeep(9, 19, 'player');
-    this.buildCampfire(14, 19);
-    this.buildStockpilePad(9, 15);
-    this.buildArmoryRack(13, 15);
-    this.buildGranary(9, 23);
+    const map = YONGCHANG_MAP;
+    this.playerKeep = this.buildGrandKeep(...map.playerKeep, 'player');
+    this.buildCampfire(...map.campfire);
+    this.buildStockpilePad(...map.stockpile);
+    this.buildArmoryRack(...map.armory);
+    this.buildGranary(...map.granary);
+    this.buildVillageBridges();
+    this.buildStartingVillage();
 
-    // 2. Rival Wolf Duke Foothill Castle (nestled naturally in the eastern valley pass at x=50..56, z=16..24)
-    this.enemyKeep = this.buildGrandKeep(53, 19, 'enemy');
-    for (let z = 15; z <= 24; z++) {
-      if (z === 15 || z === 24) this.placeStructure('tower', 48, z, 'enemy', true);
-      else if (z === 19) this.placeStructure('gate', 48, 19, 'enemy', true);
-      else if (z === 20) continue; // Covered by unified 2-tile (2-body-width) Gatehouse at (48, 19..20)!
-      else this.placeStructure('wall', 48, z, 'enemy', true);
+    this.enemyKeep = buildRaiderHarbor(this);
+    for (const [kind, points] of Object.entries(map.deposits)) {
+      for (const [x,z] of points) this.spawnDeposit(x,z,kind);
     }
-    for (let x = 49; x <= 56; x++) {
-      this.placeStructure('wall', x, 15, 'enemy', true);
-      this.placeStructure('wall', x, 24, 'enemy', true);
-    }
-
-    // 3. Natural Geological Boulders clustered strictly on their real fault outcrops
-    [[14, 8], [16, 8], [15, 9], [17, 9]].forEach(([x, z]) => this.spawnDeposit(x, z, 'stone'));
-    [[15, 31], [17, 31], [16, 32]].forEach(([x, z]) => this.spawnDeposit(x, z, 'iron'));
-    [[26, 28], [27, 29]].forEach(([x, z]) => this.spawnDeposit(x, z, 'pitch'));
 
     // 4. Multi-Species Organic Forest Groves (Spruce/Pine ridges, Silver Birch foothills, Broadleaf Oak woods, Weeping Willows by the river!)
     for (let x = 3; x < GRID_W - 4; x++) {
       for (let z = 3; z < GRID_H - 3; z++) {
         const c = this.cells[x][z];
         if (!c || c.structure || c.resourceNode || c.ground === 'water' || c.isFord || c.biome === 'road') continue;
-        if (Math.hypot(x - 12, z - 19.5) < 6.8) continue;
-        if (Math.hypot(x - 52, z - 20) < 7.5) continue;
+        if (reservedForAccess(x+0.5,z+0.5)) continue;
+        if (Math.hypot(x-map.enemyKeep[0],z-map.enemyKeep[1]) < 8) continue;
         if (c.biome === 'limestone' || c.biome === 'iron' || c.biome === 'pitchBog') continue;
 
         const groveNoise = fbm2D(x * 0.18, z * 0.18, 509);
@@ -742,7 +649,7 @@ export class VoxelWorld {
         } else if (c.elev >= 0.65 && c.elev <= 2.4 && groveNoise > 0.49 && jitter > 0.50) {
           const sp = c.elev > 1.35 ? 'pine' : (jitter > 0.78 ? 'birch' : 'oak');
           this.spawnTree(x, z, sp);
-        } else if (c.biome === 'oasis' && groveNoise > 0.59 && jitter > 0.67) {
+        } else if (c.biome === 'oasis' && groveNoise > 0.50 && jitter > 0.61) {
           this.spawnTree(x, z, jitter > 0.84 ? 'willow' : 'oak');
         }
       }
@@ -750,6 +657,50 @@ export class VoxelWorld {
 
     // 5. Lush Multi-Layer Dynamic Vegetation (Auto-clears whenever player builds over any cell!)
     this.initDioramaFlora();
+  }
+
+  buildVillageBridges() {
+    const pb = new PolyBuilder();
+    this.bridges = MAP_BRIDGES.map(b => ({ ...b, rect:[...b.rect] }));
+    for (const b of this.bridges) {
+      const [x0,z0,x1,z1]=b.rect;
+      const x=(x0+x1)/2-GRID_W/2, z=(z0+z1)/2-GRID_H/2;
+      const w=x1-x0, h=z1-z0;
+      pb.boxY(x,0.24,z,w,0.16,h,0xb2a795,{matId:VMAT.COBBLE});
+      // Low parapets leave at least 1.68 units of clear deck for 0.96-wide carts.
+      for (const sign of [-1,1]) {
+        if (b.axis==='x') {
+          pb.boxY(x,0.4,z+sign*(h/2-0.07),w,0.22,0.14,0x9c9485,{matId:VMAT.ASHLAR});
+          for (const off of [-w/2+0.12,w/2-0.12]) pb.boxY(x+off,0.4,z+sign*(h/2-0.08),0.24,0.38,0.24,0xc0b6a1,{matId:VMAT.ASHLAR});
+        } else {
+          pb.boxY(x+sign*(w/2-0.07),0.4,z,0.14,0.22,h,0x9c9485,{matId:VMAT.ASHLAR});
+          for (const off of [-h/2+0.12,h/2-0.12]) pb.boxY(x+sign*(w/2-0.08),0.4,z+off,0.24,0.38,0.24,0xc0b6a1,{matId:VMAT.ASHLAR});
+        }
+      }
+    }
+    const bridgeMesh=pb.buildMeshGroup(true,true);
+    bridgeMesh.name='Yongchang stone bridges'; this.scene.add(bridgeMesh); this.totalVoxelCount+=pb.triCount;
+  }
+
+  buildStartingVillage() {
+    this.villageDwellings=[];
+    for (const [x,z] of YONGCHANG_MAP.village.homes) {
+      const c=this.getCell(x,z);
+      if (!c || c.structure || c.ground==='water' || c.isBridge) {
+        throw new Error(`Village dwelling overlaps terrain or another building: ${x},${z}`);
+      }
+      const wp=gridToWorld(x,z),mesh=prefabs.instantiate('hovel','player');
+      mesh.position.set(wp.x,c.elev,wp.z);mesh.rotation.y=x<46?0:Math.PI;
+      this.scene.add(mesh);
+      const st={id:`dwelling_${x}_${z}`,type:'dwelling',label:'村民旧居',team:'player',gx:x,gz:z,
+        x:wp.x,y:c.elev,z:wp.z,hp:220,maxHp:220,height:1.5,mesh,cells:[c],voxelCount:mesh.userData.voxelCount||500};
+      this.totalVoxelCount+=st.voxelCount;
+      c.structure=st;this.structures.push(st);this.villageDwellings.push(st);
+    }
+    for (const [x,z] of [[41,50],[50,36],[32,46]]) {
+      const c=this.getCell(x,z);
+      if(c && !c.structure && c.ground!=='water' && !isMapRoad(x+0.5,z+0.5)) this.spawnTree(x,z,'willow');
+    }
   }
 
   registerFloraRef(gx, gz, mesh, idx) {
@@ -824,7 +775,7 @@ export class VoxelWorld {
     for (let x = 3; x < GRID_W - 3; x++) {
       for (let z = 2; z < GRID_H - 2; z++) {
         const c = this.cells[x][z];
-        if (!c || c.structure || c.isFord || c.biome === 'road') continue;
+        if (!c || c.structure || c.isFord || c.biome === 'road' || c.biome === 'paddy') continue;
         const wp = gridToWorld(x, z);
 
         // A. Shallow Riverbank Cattails & Floating Water-Lilies
@@ -860,8 +811,7 @@ export class VoxelWorld {
 
         if (c.biome === 'pitchBog' || c.biome === 'limestone' || c.biome === 'iron') continue;
         // Keep the central paved/trodden castle courtyards neat around both Keeps
-        if (Math.hypot(x - 11.5, z - 19.0) < 4.8) continue;
-        if (Math.hypot(x - 52.0, z - 19.5) < 4.8) continue;
+        if (isMapPlaza(x+0.5,z+0.5)) continue;
 
         // Check if adjacent to a cliff step or tree for natural hedgerow shrubs!
         let nearCliffOrTree = Boolean(c.tree || c.resourceNode);
@@ -1289,7 +1239,7 @@ export class VoxelWorld {
     const spec = BUILDINGS[buildType];
     if (!spec || !spec.reqBiome) return;
 
-    for (let x = 2; x <= 42; x++) {
+    for (let x = 2; x <= YONGCHANG_MAP.buildLimitX; x++) {
       for (let z = 2; z < GRID_H - 2; z++) {
         if (this.canPlace(buildType, x, z)) {
           const c = this.cells[x][z];
@@ -1315,9 +1265,9 @@ export class VoxelWorld {
 
   isGateCellCandidate(gx, gz, team = 'player', freeInit = false) {
     if (!this.inBounds(gx, gz)) return false;
-    if (!freeInit && (gx < 2 || gx > 42 || gz < 2 || gz >= GRID_H - 2)) return false;
+    if (!freeInit && (gx < 2 || gx > YONGCHANG_MAP.buildLimitX || gz < 2 || gz >= GRID_H - 2)) return false;
     const c = this.getCell(gx, gz);
-    if (!c || c.ground === 'water' || c.biome === 'cliff' || c.isFord || c.elev > 2.65) return false;
+    if (!c || c.ground === 'water' || c.biome === 'cliff' || c.isFord || c.isBridge || c.elev > 2.65) return false;
     if (!freeInit && !this.isBuildableSlope(gx, gz, 0.72)) return false;
     if (c.tree || c.resourceNode) return false;
     if (c.structure && !(c.structure.team === team && c.structure.type === 'wall')) return false;
@@ -1370,9 +1320,9 @@ export class VoxelWorld {
 
   canPlace(type, gx, gz, rotSteps = 0) {
     if (!this.inBounds(gx, gz)) return false;
-    if (gx < 2 || gx > 42 || gz < 2 || gz >= GRID_H - 2) return false;
+    if (gx < 2 || gx > YONGCHANG_MAP.buildLimitX || gz < 2 || gz >= GRID_H - 2) return false;
     const cell = this.getCell(gx, gz);
-    if (!cell || cell.ground === 'water' || cell.biome === 'cliff' || cell.isFord) return false;
+    if (!cell || cell.ground === 'water' || cell.biome === 'cliff' || cell.isFord || cell.isBridge) return false;
 
     if (type === 'demolish') {
       return Boolean(
@@ -1457,7 +1407,7 @@ export class VoxelWorld {
     let targetCells = [cell];
     let gateAxis = 'ns';
     if (type === 'gate') {
-      const fp = this.resolveGateFootprint(gx, gz, team, freeInit, freeInit ? null : normRot);
+      const fp = this.resolveGateFootprint(gx, gz, team, freeInit, normRot);
       if (!fp) return null;
       targetCells = fp.cells;
       gateAxis = fp.axis;
@@ -1572,6 +1522,7 @@ export class VoxelWorld {
   }
 
   refreshFortificationVisual(struct) {
+    if(struct?.customAppearance)return;
     if (!struct || struct.hp <= 0 || !struct.mesh) return;
 
     if (struct.type === 'wall') {
@@ -1627,6 +1578,7 @@ export class VoxelWorld {
 
   getStructureHalfExtents(struct) {
     if (!struct) return { hx: 0.48, hz: 0.48 };
+    if (struct.halfExtents) return struct.halfExtents;
     if (struct.type === 'keep' || struct.type === 'stockpile') return { hx: 0.97, hz: 0.97 };
     if (struct.type === 'gate') {
       return struct.gateAxis === 'ew' ? { hx: 0.99, hz: 0.49 } : { hx: 0.49, hz: 0.99 };
@@ -1741,6 +1693,23 @@ export class VoxelWorld {
    * Campfire Hearth, Stockpile Pallets, Trees, Boulders, Deep Water & Steep Cliffs!
    */
   projectOutOfObstacles(ent, radius, team = 'player') {
+    // Bridge parapets and end posts use the same rectangles as their mesh.
+    // The water mask alone cannot stop a shoulder clipping the low stone rail.
+    for (const bridge of this.bridges) {
+      const [gx0,gz0,gx1,gz1]=bridge.rect;
+      const x0=gx0-GRID_W/2,x1=gx1-GRID_W/2,z0=gz0-GRID_H/2,z1=gz1-GRID_H/2;
+      if(ent.x<x0-radius || ent.x>x1+radius || ent.z<z0-radius || ent.z>z1+radius)continue;
+      if(bridge.axis==='x') {
+        this.pushCircleFromAABB(ent,x0,x1,z0,z0+.14,radius);
+        this.pushCircleFromAABB(ent,x0,x1,z1-.14,z1,radius);
+      } else {
+        this.pushCircleFromAABB(ent,x0,x0+.14,z0,z1,radius);
+        this.pushCircleFromAABB(ent,x1-.14,x1,z0,z1,radius);
+      }
+      for(const x of [x0+.12,x1-.12]) for(const z of [z0+.08,z1-.08]) {
+        this.pushCircleFromAABB(ent,x-.12,x+.12,z-.12,z+.12,radius);
+      }
+    }
     this._projVisitId = (this._projVisitId || 0) + 1;
     const visitId = this._projVisitId;
 

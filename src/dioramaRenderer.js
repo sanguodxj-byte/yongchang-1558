@@ -591,13 +591,17 @@ export class DioramaPostFx {
   }
 }
 
-// Slow directional ripples, lit wave normals and restrained shoreline foam.
+// Curved, moving ripple contours retain the original illustrated water language.
+// Filter the contours before shading; highlights still follow the scene lights.
 export function applyStylizedWaterShader(mat) {
-  mat.customProgramCacheKey = () => 'yongchang-water-v4';
+  mat.customProgramCacheKey = () => 'yongchang-water-v5';
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uWaterTime = atmosphereTime;
     shader.uniforms.uDeepColor = { value: new THREE.Color(DIORAMA_LOOK.water.deep) };
     shader.uniforms.uShallowColor = { value: new THREE.Color(DIORAMA_LOOK.water.shallow) };
+    shader.uniforms.uContourStrength = { value: DIORAMA_LOOK.water.contourStrength };
+    shader.uniforms.uNormalStrength = { value: DIORAMA_LOOK.water.normalStrength };
+    shader.uniforms.uFoamStrength = { value: DIORAMA_LOOK.water.foamStrength };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nattribute float aShore;\nvarying vec3 vWaterWorld;\nvarying float vShore;')
       .replace(
@@ -617,6 +621,9 @@ export function applyStylizedWaterShader(mat) {
         uniform float uWaterTime;
         uniform vec3 uDeepColor;
         uniform vec3 uShallowColor;
+        uniform float uContourStrength;
+        uniform float uNormalStrength;
+        uniform float uFoamStrength;
         varying vec3 vWaterWorld;
         varying float vShore;
         float wHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -626,6 +633,10 @@ export function applyStylizedWaterShader(mat) {
           vec2 u = f * f * (3.0 - 2.0 * f);
           return mix(mix(wHash(i), wHash(i + vec2(1.0, 0.0)), u.x),
                      mix(wHash(i + vec2(0.0, 1.0)), wHash(i + vec2(1.0, 1.0)), u.x), u.y);
+        }
+        float waterHeight(vec2 p, float t) {
+          return wNoise(p * 0.72 + vec2(t * 0.16, -t * 0.11)) * 0.62
+               + wNoise(p * 1.85 - vec2(t * 0.22, t * 0.09)) * 0.38;
         }`
       )
       .replace(
@@ -633,30 +644,37 @@ export function applyStylizedWaterShader(mat) {
         `#include <color_fragment>
         vec2 wP = vWaterWorld.xz;
         float wT = uWaterTime;
-        float wN = wNoise(wP * 0.48 + vec2(wT * 0.05, -wT * 0.09));
+        float wN = waterHeight(wP, wT);
         float depthWave = smoothstep(0.22, 0.8, wNoise(wP * 0.18));
         float shallow = clamp(vShore * 0.85 + 0.16 + (1.0 - depthWave) * 0.22, 0.0, 1.0);
         diffuseColor.rgb = mix(uDeepColor, uShallowColor, shallow);
-        float ripplePhase = dot(wP, vec2(1.25, 3.8)) - wT * 0.75 + wN * 4.0;
-        float ripple = pow(0.5 + 0.5 * sin(ripplePhase), 24.0);
-        ripple *= smoothstep(0.38, 0.72, wNoise(wP * vec2(1.2, 0.7) + vec2(-wT * 0.08, wT * 0.02)));
-        float rippleFilter = 1.0 - smoothstep(0.3, 1.4, fwidth(ripplePhase));
-        diffuseColor.rgb += vec3(0.009, 0.016, 0.014) * ripple * rippleFilter;
+        float contourPhase = wN * 3.6 + wT * 0.06;
+        float contourWidth = fwidth(contourPhase);
+        float contour = abs(fract(contourPhase) - 0.5);
+        float ripple = 1.0 - smoothstep(0.018, 0.048 + contourWidth, contour);
+        float rippleFilter = 1.0 - smoothstep(0.16, 0.55, contourWidth);
+        // Open sea has broad quiet patches. Narrow canals retain the legible
+        // continuous contours of the original style at the normal play zoom.
+        float openWater = smoothstep(0.28, 0.70, wNoise(wP * 0.23 + vec2(wT * 0.025, 0.0)));
+        float rippleCoverage = mix(0.16 + openWater * 0.65, 1.0, vShore);
+        diffuseColor.rgb += vec3(0.76, 0.80, 0.75) * ripple * rippleFilter * rippleCoverage * uContourStrength;
         if (vShore > 0.02) {
           float lap = 0.5 + 0.5 * sin(wT * 1.3 - vShore * 9.0 + wN * 4.0);
-          float foam = smoothstep(0.48, 0.91, vShore) * (0.15 + lap * 0.12);
-          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.52, 0.61, 0.55), foam);
+          float foam = smoothstep(0.40, 0.90, vShore) * (0.55 + lap * 0.45) * uFoamStrength;
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.60, 0.68, 0.61), foam);
         }`
       )
       .replace(
         '#include <normal_fragment_maps>',
         `#include <normal_fragment_maps>
         {
-          vec2 slope = vec2(1.6, 0.58) * cos(dot(wP, vec2(1.6, 0.58)) - wT * 0.8 + wN * 3.0) * 0.018
-                     + vec2(-0.85, 2.1) * cos(dot(wP, vec2(-0.85, 2.1)) + wT * 0.6 - wN * 2.0) * 0.012;
-          float detailPhase = dot(wP, vec2(5.2, -3.7)) - wT * 1.1;
-          slope += vec2(5.2, -3.7) * cos(detailPhase) * 0.007
-                 * (1.0 - smoothstep(0.4, 1.5, fwidth(detailPhase)));
+          // Normals come from the same curved wave field, avoiding the old
+          // map-wide pair of straight specular stripes.
+          float sampleSpan = max(0.09, length(fwidth(wP)));
+          vec2 slope = vec2(
+            waterHeight(wP + vec2(sampleSpan, 0.0), wT) - waterHeight(wP - vec2(sampleSpan, 0.0), wT),
+            waterHeight(wP + vec2(0.0, sampleSpan), wT) - waterHeight(wP - vec2(0.0, sampleSpan), wT)
+          ) * (uNormalStrength / (2.0 * sampleSpan));
           vec3 waveNormal = normalize(vec3(-slope.x, 1.0, -slope.y));
           normal = normalize((viewMatrix * vec4(waveNormal, 0.0)).xyz);
         }`
@@ -666,7 +684,7 @@ export function applyStylizedWaterShader(mat) {
 }
 
 // My Civilization's Billowy Sea-of-Clouds Framing Border & Non-Overlapping Outer Azure Ocean!
-export function createDioramaCloudSeaAndOcean(scene, mapW, mapH) {
+export function createDioramaCloudSeaAndOcean(scene, mapW, mapH, { eastOnly = false } = {}) {
   // 4-piece collar East China Sea strictly OUTSIDE map bounds (natural slate-jade sea, no toy cotton-ball clouds!)
   const oceanMat = new THREE.MeshStandardMaterial({
     color: '#2b474d',
@@ -679,7 +697,9 @@ export function createDioramaCloudSeaAndOcean(scene, mapW, mapH) {
   const hw = mapW / 2 + 0.25;
   const hh = mapH / 2 + 0.25;
   const pad = 110;
-  const oceanStrips = [
+  const oceanStrips = eastOnly ? [
+    [mapW / 2 + pad / 2, 0, pad, mapH + pad * 2],
+  ] : [
     [0, -(hh + pad / 2), mapW + pad * 2, pad],
     [0, hh + pad / 2, mapW + pad * 2, pad],
     [-(hw + pad / 2), 0, pad, mapH + 0.5],

@@ -387,7 +387,7 @@ export class PrefabLibrary {
     if (key === 'farm' && entry.sailsGeo) {
       const sails = new THREE.Mesh(entry.sailsGeo, getSharedVoxelMaterial());
       sails.castShadow = true;
-      sails.position.set(0.38, 0.48, 0.0);
+      sails.position.set(-0.38, 0.40, 0.0);
       group.add(sails);
       group.userData.sails = sails;
     }
@@ -777,11 +777,22 @@ export class PrefabLibrary {
       pb.box(0.26, 1.28, 0.04, 0.065, 0.065, 0.76, pal.plank, { rotX: -0.16, matId: VMAT.TIMBER });
       pb.prismY(0.26, 0.64, 0.26, 0.012, 0.012, 0.58, 6, 0x94a3b8, { matId: VMAT.METAL });
       pb.boxY(0.26, 0.42, 0.26, 0.24, 0.22, 0.24, pal.stoneA, { matId: VMAT.ASHLAR });
-      // Buffalo stone water trough & hitching post (+Z)
-      pb.prismY(-0.32, 0.10, 0.32, 0.038, 0.035, 0.36, 10, pal.stoneA, { matId: VMAT.ASHLAR });
-      pb.ellipsoid(-0.32, 0.49, 0.32, 0.05, 0.05, 0.05, pal.gold, { uSegs: 8, vSegs: 6, matId: VMAT.METAL });
-      pb.boxY(-0.08, 0.10, 0.32, 0.30, 0.13, 0.18, pal.stoneTrim, { matId: VMAT.ASHLAR });
-      pb.boxY(-0.08, 0.20, 0.32, 0.24, 0.035, 0.12, 0x456b6e);
+      // Stone-working bench; ox husbandry is a separate buildable yard.
+      pb.boxY(-0.08, 0.10, 0.32, 0.48, 0.18, 0.22, pal.stoneTrim, { matId: VMAT.ASHLAR });
+      pb.boxY(-0.16, 0.28, 0.32, 0.16, 0.045, 0.12, pal.stoneA, { matId: VMAT.ASHLAR });
+      return pb.buildGeometry();
+    }
+
+    if (key === 'oxPost') {
+      pb.boxY(0, -0.18, 0, 1.92, 0.20, 1.92, 0x877756, { matId: VMAT.SAND });
+      for (const x of [-.79, .79]) {
+        pb.prismY(x, .02, -.72, .075, .06, .78, 10, pal.timber, { matId: VMAT.TIMBER });
+        pb.ellipsoid(x, .58, -.66, .055, .055, .025, pal.gold, { uSegs: 10, vSegs: 6, matId: VMAT.METAL });
+      }
+      pb.boxY(0, .42, -.72, 1.68, .10, .10, pal.plank, { matId: VMAT.TIMBER });
+      pb.boxY(.53, .02, .48, .64, .18, .36, pal.stoneTrim, { matId: VMAT.ASHLAR });
+      pb.boxY(.53, .17, .48, .53, .025, .24, 0x456b6e);
+      for (let i = 0; i < 5; i++) pb.boxY(-.6+i*.12, .02, .6, .10, .14, .38, 0xbba35b, { matId: VMAT.TIMBER });
       return pb.buildGeometry();
     }
 

@@ -1,55 +1,105 @@
-# 《守望1558：永昌风云》(Watch over Yongchang: 1558)
+# 守望1558：永昌风云
 
-> **2026 中国开源游戏大赛 ·「守望」主题参赛作品**
-> 国风折面低模（Stylized Low-Poly）× 永昌堡海防筑城策略 × 明代抗倭叙事 × 英桥王氏家风传承
+国风低模海防筑城策略游戏。以永昌堡与英桥王氏的历史为创作背景，从四户村落出发，经营生产运输、筑城募勇、抵御海上来寇，并乘舟反攻岛寨。历史地理参照与玩法创作范围见 [地图说明](docs/yongchang-map.md) 和 [岛寨说明](docs/raider-island.md)。
 
-## 一、作品背景与「守望」立意
+## Dora 与 H5 同步版本
 
-明嘉靖三十一年至三十七年（1552–1558 年），浙南沿海倭患深重。温州龙湾永嘉场英桥王氏族长 **王沛**、名将 **王德** 叔侄率乡兵抗倭，先后壮烈殉国。王叔果、王叔杲兄弟感念先烈遗志，倡议倾族集资，仅历十三月便在龙湾大罗山东麓筑成民间抗倭卫城——**永昌堡**。堡内引河成渠、开田百亩、筑斜垒花岗城垣与空心敌台，在嘉靖戊午（1558）围城战中护佑数千乡民安然渡劫，守望家园逾四百六十载。
+正式版本只维护 **一份 Godot 4.7.2 工程 `game/`**。地图、模型、玩法、数值、UI、声音均在该工程内。H5 用 Godot Web 运行时，Dora 用 GodotNode 加载同一个 `game.pck`；构建时逐字节核对两个内容包，并在 `BUILD.json` 中记录 SHA-256。
 
-本作基于纯前端零构建 **WebGL / Three.js 程序化多面体低模（Low-Poly）引擎**，深度融合经典《要塞》（Stronghold）物理采集军工链与即时海防战术，围绕三大核心维度诠释 **「守望」**：
+- **Dora**：在 Go 模式的“导入作品包”选择 `dist/Yongchang1558-Dora.zip`，或解压后在 IDE 运行 `init.lua`。需要含 Godot 支持、渲染后端匹配的 Dora SSR 1.10.2。此次实测为官方 OpenGL 版 1.10.2.12；另附字节相同的 `.dora` 扩展名副本。
+- **H5**：完整解压 `dist/Yongchang1558-H5.zip`，以 HTTP/HTTPS 提供全部文件，打开 `index.html`。需要 WebGL 2；无需 CDN、Node 服务或跨源隔离头。
+- **源码**：`dist/Yongchang1558-Source.zip`；两个运行包内部也各有一份 `SOURCE.zip`。游戏的“开源与授权”界面提供获取入口。
 
-1. **抗倭叙事（嘉靖戊午保卫战）**
-   - 四幕历史递进战局：从首幕抢筑防线迎击东海浪人前锋，到抵御大筒破城槌夜袭、触发「困城观稼」史实桥段，直至铸造佛郎机与虎蹲炮渡河焚毁倭寇安宅巨舰本阵。
-   - 考据级明代浙南抗倭兵种：**毛竹狼筅乡勇**（克制近战倭刀）、**神机鸟铳手**（登墙/敌台驻防）、**温州藤牌刀兵**、**武状元宗族铁骑**，以及 **明军虎蹲炮车** 与 **乌龟包铁冲车**。
-2. **城堡防御（温州永昌堡海防规制）**
-   - 全低模中国风建筑：**斜垒收分花岗岩条石城墙**、2 身位宽 **重檐飞檐谯楼石拱城门**（水牛拉石车与攻城器自由通行）、**永昌空心敌台**（发射引燃火箭）、**佛郎机八角火炮台** 与 **猛火油伏火壕**。
-   - 还原永昌堡「堡内有田、耕战自给」奇观：任意平地均可开垦 **江南水车稻田**，开垦 3 块即可触发 **【堡内有田·围困不惊】**，提升粮食产率与全军抗倭士气；配合 **斥候巡防（快捷键 `T`）** 勘验东门迎川道与北湾环海道防线闭环。
-3. **家族传承（英桥王氏家风乡约）**
-   - **宗长王叔果亲临督战**：可自由行军迎敌，或驻入【英桥王氏大宗祠】及任意敌台/谯楼（建筑上方升起悬浮鎏金帅印宝盖，持续恢复并协同射击）。
-   - **宗族乡约三策**（【耕读传家】/【毁家纾难】/【义仓赈乡】）、**合族义捐** 与 **《英桥王氏三世忠烈家风碑》**（随战局解锁【先烈忠魂·王沛王德】【双贤筑堡·王叔果王叔杲】【文武世泽·武状元王名世】永久传承加成）。
+本地启动已构建的 H5：
 
----
-
-## 二、快速运行
-
-本项目已内置全部零构建 ES Module 依赖（含本地 `three.module.js` 与后处理管线），克隆仓库后启动任意静态 HTTP 服务即可直接游玩（同时支持桌面端键鼠与移动端横屏触控）：
-
-```bash
-python -m http.server 8765
-# 浏览器打开 http://localhost:8765/
+```powershell
+python scripts/serve.py --port 8767
+# http://127.0.0.1:8767/
 ```
 
-### 常用操作与快捷键
-- **连续营造与旋转**：点选左下「营造」卡牌后，点击地面连续放置建筑，按住拖拽可划线修筑花岗城墙或铺设猛火油壕；点击右下浮动条「↻ 转向」或按 `R` 键可 90° 旋转任意建筑朝向。
-- **兵阵与驻防**：拖拽小队战旗调度行军；将【神机鸟铳手】拖至城墙/敌台即可登城驻守；点击左上「驻祠」或直接拖拽宗长王叔果可进驻建筑督战。
-- **视角与巡防**：右键拖拽平移、滚轮缩放、`Q` / `E` 旋转视角、`T` 键派遣斥候巡防勘验城防缺口、`Esc` 打开暂停菜单或退出建造。
+源码开发直接使用 Godot 4.7.2 打开 `game/project.godot`。生成两个平台应用包：
 
----
+```powershell
+python scripts/build-platforms.py --godot <Godot-4.7.2-console> --web-template <web_nothreads_release.zip>
+```
 
-## 三、项目结构
+详见 [运行与构建说明](docs/platforms.md)、[同源约束](docs/platform-contract.md) 和 [验收记录及限制](docs/platform-validation.md)。本地的 `.build/` 与 `dist/` 不入库。
 
-- `index.html` —— 国风响应式横屏 HUD、孔明灯暮色标题屏、英桥王氏都堂主菜单与族谱堡志弹窗
-- `src/voxelEngine.js` —— `PolyBuilder` 程序化折面低模几何构建器（歇山/攒尖飞檐翘角、五岳朝天马头墙、八段石拱券门、法线朝向校验与顶点色环境光遮蔽）
-- `src/voxelPrefabs.js` —— 永昌堡全系中国风建筑、倭寇安宅船寨、江南翠竹松柳、水车稻田与货物低模资产库
-- `src/entities.js` —— 宗长王叔果、明代抗倭义军、江南青水牛拉石车、虎蹲炮/乌龟冲车及东海倭寇骨骼动画低模
-- `src/mapAndBuild.js` —— 温州龙湾山水低模地形（大罗山余脉、护城河湾、东海滩涂）、2.5D 精确射线拾取与连续旋转建造系统
-- `src/flowField.js` —— 混合 2.5D 势场流场 + 视线拉直 A* 寻路与硬碰撞防穿模解算器
-- `src/dioramaRenderer.js` —— 微缩景观级三点日光、云影斑驳、水面波光与描边后处理管线
-- `src/audio.js` —— WebAudio 零外部音频合成（鸟铳齐射、佛郎机轰鸣、永昌铜钲急鼓、五声音阶号角与宗祠编钟）
+## 山海地图
 
----
+地图按“西部山脊—山麓林地—双渠村落与耕地—滨海湿地—虚构海岛”重建，参考《帝国时代 IV》先定地块/通路再雕刻和分层绘制的地图制作方法。史实确认、现代地形关系校验与玩法推定见 [地形设计](docs/terrain-design.md)。精确明代岸线未获测绘支持，不作为复原结论。
 
-## 四、开源协议
+修改 `content/yongchang-map.json` 后运行 `python scripts/build-terrain.py`（Python 3.11+、NumPy、Pillow）；随后运行共同逻辑和几何检查，再构建两端。生成器保留既有建筑/人物模型，并复用一份地形高度用于渲染、行走、建造和地面拾取。生成器与素材源均包含在源码包中。
 
-本项目采用 [MIT License](./LICENSE) 开源授权。
+```powershell
+python scripts/build-terrain.py
+python scripts/test-common.py
+python scripts/check-terrain.py
+python scripts/build-platforms.py
+python scripts/check-terrain-runtime.py --runtime <Dora.exe> --output .build/terrain-runtime
+```
+
+## 远海反攻
+
+当前地图为 224×96，敌岛东移64格，渡口间距由7格增至71格。双重寨门、四座铳楼、两处岸防炮和5000耐久本营构成后期目标。自动进攻先在大陆渡口集结，再乘船出发；建议用包铁冲车、虎蹲炮车配合护卫。详细数值和验收见 [远海岛寨设计](docs/offshore-fortress.md)。
+
+## 民丁与运输设施
+
+民丁按工种持镰、斧、镐、勺、锯或锤，采集、加工分别使用对应工具。行走按位移落脚，工作包含蓄力、接触和收回，搬运物随双手移动；详见 [动作精修](docs/motion-polish.md)。“水乡民生”可建设2×2物资堆放场及独立绑牛桩；工人选择可达的最近堆场。采石场可独立工作，7格内配绑牛桩后每批石料产量+50%，由牛车运送，同一石场不叠加。详见 [工种、运输与模型修正](docs/worksites-and-animation.md)。
+
+## 性能
+
+保留当前画质与动作，减少重复骨骼求解，使用单位空间查询与对象索引。最新四轮原生对照中，125单位交战平均脚本耗时20.03→10.82毫秒；重战场仍未稳定60FPS。原生/H5的帧尾、内存和复现方法见 [性能报告](docs/performance.md)，其中区分压力夹具、真实输入和共享机器负载。
+
+## 界面风格
+
+两端共用“永昌海防图志”国风 Q 版界面：楷书题签、浅绢纸册页、朱印、青绿选中态和木刻线描图标。封面以原代码画作参考，经图生图重绘为青绿国画，标题与按钮由游戏单独绘制。营造与募勇卡牌保留实际模型画像，宗族与军令按需展开，并提供资源与阶段目标定位。详见 [UI 风格与来源](docs/ui-style.md)。
+
+## 操作
+
+开局、生产、防守、渡海、胜负与重开的实际验收，以及手机尺寸等剩余问题，见 [玩法闭环与易用性检查](docs/gameplay-usability.md)。
+
+- 营造：选卡后点击地面；城墙、油壕支持拖线；`R` 或“转向”旋转，“取消”退出。民生卡可用“上一页/下一页”翻看，左侧显示用途与下一步提示。
+- 募勇：六类兵种共用资源与人口规则；点击/拖动部队下令，鸟铳小队可驻防城墙或敌台。
+- 渡海：在右下“军令”选择“进攻”，令部队向渡口集结并乘舟反攻，也可直接命令部队前往对岸。
+- 宗族：点击左上“宗族”进入“驻祠”、三种乡约、“义捐”（每局两次）、“驰援”（每局一次）；开田、筑堡与守夜解锁加成。
+- 镜头：右键拖动、`WASD`、滚轮、`Q/E`；`M` 全图；点击小地图定位。
+- 触屏：按钮与地面点按、部队拖动、双指平移/缩放。已配置触控输入；真实手机兼容性须单独验收。
+- `Esc` 先收起当前面板、取消营造或选择，再暂停。暂停中按`Esc`直接恢复；可保存进度并返回标题，下次继续守望；胜负结算可直接“再守一局”。
+
+## 项目结构与验证
+
+| 路径 | 用途 |
+| --- | --- |
+| `game/scripts/session.gd` | 两个平台共用的玩法状态机 |
+| `game/scripts/unit_rig.gd` | 人物骨骼、工种工具及行走/工作/战斗动作 |
+| `game/scripts/main.gd` | 共用画面、镜头、键鼠/触控与只读状态观察 |
+| `game/scripts/mobile_ui.gd`、`game/assets/ui/` | 共用国风 Q 版 UI、册页皮肤、原有模型画像与线描图标 |
+| `game/scripts/assets.gd`、`game/assets/` | 原程序化模型与地图的无损导出、统一加载 |
+| `game/shaders/`、`game/scripts/sound.gd` | 共用材质、水面与合成音效 |
+| `init.lua` | Dora 宿主入口，加载同一 Godot 工程/PCK |
+| `scripts/build-platforms.py` | H5、Dora、完整源码归档与校验收据 |
+| `scripts/test-common.py` | 共同逻辑测试；战斗用测试军队，不代表正常经济通关 |
+| `scripts/check-h5.py` | 已导出 H5 的真实输入、触控模拟、实际响应哈希检查 |
+| `scripts/check-dora.py` | Dora 宿主加载、桥接输入、实时状态与截图 |
+| `src/`、`vendor/`、根目录 `index.html` | 旧 Three.js 版与资产生成器，保留供迁移对照，不作为正式 H5 入口 |
+| `scripts/migrate-assets.py` | 从旧版实际构造器导出模型、地图和数据 |
+
+```powershell
+python scripts/test-common.py
+python scripts/check-worksites.py
+python scripts/check-model-clearance.py
+python scripts/check-fortress.py
+python scripts/check-fortress-runtime.py
+python scripts/check-h5.py --output .build/h5-check
+python scripts/check-dora.py --runtime <Dora.exe> --output .build/dora-check
+python scripts/check-ui-parity.py --runtime <Dora.exe> --output .build/ui-parity
+```
+
+H5 检查前先启动静态服务；Dora 检查前启动对应宿主。旧版对照服务使用 `python scripts/serve.py --directory . --port 8766`。完整来源与生成参数保留在源码包内。
+
+## 授权与参赛
+
+当前代码为 [AGPL-3.0-only](LICENSE)。团队原创且有权授权的非代码资产为 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)，允许署名后的商业使用、修改及再分发，并须标明修改。范围与署名见 [ASSET_LICENSE.md](ASSET_LICENSE.md)。第三方字体、Godot、Three.js 保持原许可证，见 [THIRD_PARTY.md](THIRD_PARTY.md)。此前 MIT 版本的既有授权保留。
+
+本地包不等同于完成大赛提交：仍需公开最终完整源码与试玩入口、补齐团队 AI/素材声明、获得原子派社区至少 20 赞、完成互评，并通过组委会运行、质量及授权审核。当前修改尚未推送或发布。

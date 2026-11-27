@@ -1,0 +1,121 @@
+{
+  "schema": 2,
+  "method": "Two-stage image-to-image: traditional Chinese guohua repaint, then paper-seam repair",
+  "model": "gemini-3-pro-image",
+  "provider": "Local AIStudio2API",
+  "asset": "game/assets/ui/title-guohua.png",
+  "sha256": "3b8c4efab34927bed95753d920c42e0207b8ba12f43ba113f177fb898e4125d0",
+  "bytes": 5398463,
+  "dimensions": [
+    2560,
+    1600
+  ],
+  "postprocessing": "None; final generated PNG copied byte-for-byte",
+  "source": "game/assets/ui/title-atlas.svg",
+  "stages": [
+    {
+      "provider": "Local AIStudio2API",
+      "endpoint": "http://127.0.0.1:2048/v1/images/edits",
+      "method": "image-to-image",
+      "request": {
+        "model": "gemini-3-pro-image",
+        "size": "2560x1600",
+        "quality": "high",
+        "n": "1",
+        "response_format": "b64_json",
+        "output_format": "png",
+        "prompt": "Transform the supplied code-drawn composition into a substantially more refined traditional Chinese guohua painting, qinglu shanshui with gongbi architectural detail on warm xuan paper. This is a full artistic repaint and a visible upgrade in brushwork and detail, not tracing, vector cleanup or adding a texture to the existing flat shapes.\n\nUse the supplied image ONLY to anchor the overall composition: 16:10 horizontal canvas; a generous quiet ivory-paper area at the left for the game's live title and start button; mountains and a small coastal settlement arranged on the right; a pale sun in open upper-right sky; a low fortified stone wall in the lower foreground; one Chinese batten-sailed boat on water at lower right. Preserve this overall visual balance, the green-and-ivory palette, and the sparse elegant mood. You may redraw every contour, roof and architectural form to make it painterly and graceful. Do not preserve the reference's crude polygon silhouettes or simplistic house symbols. The leftmost 40-43 percent must stay very light and largely empty, with at most faint paper fibers or a soft distant mist edge, so dark live typography will remain readable. Leave the upper-right sky calm enough for a small live caption. Keep the delicate single inset frame and red corner marks understated.\n\nPAINTING STYLE IS THE MAIN REQUIREMENT: authentic Chinese brush and ink with mineral azurite and malachite blue-green washes, layered transparent pigment, subtle warm ochre underpainting, varied dry and wet ink, fine broken contour strokes, expressive mountain texture strokes (cun), sparse ink-dot vegetation, deliberate soft mist gaps and beautiful paper reserve. Distant peaks dissolve in pale ink; the near mountain has clearly readable rocky strata, crags, natural ridgelines, hand-brushed tree clusters and pine silhouettes. Show genuine brush-level complexity and tonal variation within the mountains, not four uniform flat green bands. Crisp restrained gongbi lines for man-made objects, softer freely brushed terrain, poetic and sophisticated. Evoke a beautifully restored Chinese landscape handscroll adapted to an illustrated game cover, not Western watercolor, not an anime background and not photorealistic scenery.\n\nSUBJECT DETAIL: replace the six simplistic houses with a coherent small cluster of southeast-Chinese whitewashed courtyard homes in roughly the same right-side area and scale. Draw elegant grey-tile roofs with visible tile rhythms, carved timber eaves, dark lattice windows, muted cinnabar doors, tiny stone steps and hints of courtyard walls. Add sparse pines, shrubs and reeds that ground them naturally in the slopes. Refine the foreground stone fortification with varied granite blocks, a credible modest gate passage and a small timber gatehouse; keep it a local coastal defence, not an imperial palace. Refine the single Chinese junk with curved wooden hull planking, mast, batten sail seams and fine rigging. Paint the water with fine rhythmic ink ripples, subtle pale mineral-green washes and light reflections. Keep buildings, wall and boat visually legible at title-screen size, detailed but not crowded. Chinese coastal setting inspired by Wenzhou in the Ming dynasty, with no Japanese castles, torii or European architecture.\n\nThe change must be obvious at a glance: an accomplished, detailed Chinese ink-and-mineral-color painting replaces the original code-drawn clip art while keeping the title-safe composition. No large characters, no crowded town panorama, no dramatic 3D lighting, no glossy toy rendering, no flat vector fills, no uniform computer-perfect outlines. Do not add any writing, calligraphy, numbers, labels, signatures, stamps, watermarks, logos, buttons or UI. All title text and controls will be added separately by the game.\n"
+      },
+      "reference": {
+        "source": "game/assets/ui/title-atlas.svg",
+        "sourceSha256": "807d1e894e036752dc9d00560d1c53414832d38482e16d145e797e2343162c31",
+        "raster": "content/cover-reference.png",
+        "rasterSha256": "4a49c5a1444866acde4f7224dd58ec17dea54173b4d559468e8d81d7cd35763f",
+        "dimensions": [
+          2560,
+          1600
+        ]
+      },
+      "submittedAt": "2026-11-26T09:47:50.264540+00:00",
+      "elapsedSeconds": 47.7,
+      "usage": {
+        "total_tokens": 2618,
+        "input_tokens": 1020,
+        "output_tokens": 1241,
+        "input_tokens_details": {
+          "text_tokens": 762,
+          "image_tokens": 258
+        },
+        "output_tokens_details": {
+          "text_tokens": 0,
+          "image_tokens": 2000
+        }
+      },
+      "revisedPrompt": null,
+      "promptFile": "content/cover-edit-prompt.txt",
+      "output": {
+        "file": "content/cover-guohua-stage1.png",
+        "sha256": "5e7f600f71aea942240e40a1cbd00f04b5cde433a7eb7b8d1be62448cda30f42",
+        "dimensions": [
+          2560,
+          1600
+        ]
+      }
+    },
+    {
+      "provider": "Local AIStudio2API",
+      "endpoint": "http://127.0.0.1:2048/v1/images/edits",
+      "method": "image-to-image",
+      "request": {
+        "model": "gemini-3-pro-image",
+        "size": "2560x1600",
+        "quality": "high",
+        "n": "1",
+        "response_format": "b64_json",
+        "output_format": "png",
+        "prompt": "Make one localized finishing correction to this supplied Chinese guohua painting. Keep the painting's existing brushwork, mountain crags, ink textures, trees, houses, gate, boat, water ripples, colors, overall composition and empty left title area intact.\n\nRemove the conspicuous straight vertical paper-color boundary at about one-third of the image width. There should be ONE continuous warm ivory xuan-paper ground across the entire picture, not a rectangular pale panel laid over the left side. Match the paper tone and subtle grain smoothly across that boundary; let the pale mist and faint background strokes dissolve naturally into the blank left area. Remove any straight vertical wash edge while retaining ample clear light space at the left for live text. In the upper sky, keep the area above the main peak quiet enough for a small caption without adding any elements.\n\nThis is a subtle local seam repair only. Preserve the detailed traditional Chinese ink-and-mineral-color style. Do not flatten it into vector art and do not simplify the architectural or brush details. Keep the existing thin outer frame. No added text, signature, seal, watermark, logo, numbers, buttons or UI. Output the same full 16:10 painting at 2560x1600.\n"
+      },
+      "reference": {
+        "source": "content/cover-guohua-stage1.png",
+        "sourceSha256": "5e7f600f71aea942240e40a1cbd00f04b5cde433a7eb7b8d1be62448cda30f42",
+        "dimensions": [
+          2560,
+          1600
+        ]
+      },
+      "submittedAt": "2026-11-26T10:48:59.753250+00:00",
+      "elapsedSeconds": 83.5,
+      "usage": {
+        "total_tokens": 1815,
+        "input_tokens": 519,
+        "output_tokens": 1077,
+        "input_tokens_details": {
+          "text_tokens": 261,
+          "image_tokens": 258
+        },
+        "output_tokens_details": {
+          "text_tokens": 0,
+          "image_tokens": 2000
+        }
+      },
+      "revisedPrompt": null,
+      "promptFile": "content/cover-paper-fix-prompt.txt",
+      "output": {
+        "file": "game/assets/ui/title-guohua.png",
+        "sha256": "3b8c4efab34927bed95753d920c42e0207b8ba12f43ba113f177fb898e4125d0",
+        "dimensions": [
+          2560,
+          1600
+        ]
+      }
+    }
+  ],
+  "review": {
+    "composition": "Light left title area and right coastal settlement retained; geometry repainted",
+    "style": "Qinglu shanshui: mineral-color washes, ink texture strokes, mist and gongbi architecture",
+    "detail": "Mountain strata, pines, roof tiles, lattice windows, granite gate and junk rigging",
+    "seam": "Straight paper-color division removed",
+    "text": "All title, caption and button text rendered by game"
+  },
+  "reviewedAt": "2026-11-27T06:52:12.510311+00:00"
+}

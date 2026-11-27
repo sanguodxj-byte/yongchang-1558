@@ -1,14 +1,15 @@
 {
   "name": "voxel-stronghold-demo",
   "version": "1.0.0",
-  "description": "",
+  "description": "守望1558：永昌风云 - one Godot game for Dora and H5",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build:platforms": "python scripts/build-platforms.py",
+    "test": "python scripts/test-common.py"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "AGPL-3.0-only",
   "type": "commonjs",
   "dependencies": {
     "three": "^0.187.0"

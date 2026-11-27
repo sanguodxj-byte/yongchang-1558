@@ -62,15 +62,17 @@ with sync_playwright() as p:
     page.mouse.wheel(0, 600)
     page.wait_for_timeout(650)
     page.screenshot(path=str(output / f'{args.label}-wide.png'))
-    page.evaluate('''() => {
-      game.camTarget.set(2, 0.5, 0);
+    page.evaluate('''async () => {
+      const {YONGCHANG_MAP:m}=await import('/src/yongchangMap.js');
+      game.camTarget.set(m.canals[1].x0-m.width/2+1, 0.4, 49-m.height/2);
       game.camDesiredTarget.copy(game.camTarget);
       game.frustumSize = 24; game.updateOrthoProjection();
     }''')
     page.wait_for_timeout(400)
     page.screenshot(path=str(output / f'{args.label}-river.png'))
-    page.evaluate('''() => {
-      game.camTarget.set(-16.5, 0.5, 0.2);
+    page.evaluate('''async () => {
+      const {YONGCHANG_MAP:m}=await import('/src/yongchangMap.js');
+      game.camTarget.set(m.camera.home[0]-m.width/2+.5,.4,m.camera.home[1]-m.height/2+.5);
       game.camDesiredTarget.copy(game.camTarget);
       game.frustumSize = 20; game.updateOrthoProjection();
       game.isNight = true; game.phaseTimer = 999;
@@ -135,9 +137,10 @@ with sync_playwright() as p:
         # A short frame strip uses real keyboard/wheel input and the real clock;
         # these images are motion evidence, not a frame-time benchmark.
         page.set_viewport_size({'width': 1280, 'height': 800})
-        page.evaluate('''() => {
+        page.evaluate('''async () => {
+          const {YONGCHANG_MAP:m}=await import('/src/yongchangMap.js');
           game.isNight=false; game.phaseTimer=999;
-          game.camDesiredTarget.set(2,0.5,0);
+          game.camDesiredTarget.set(m.canals[1].x0-m.width/2+1,.4,49-m.height/2);
           game.frustumSize=24; game.updateOrthoProjection();
         }''')
         page.wait_for_timeout(2200)
