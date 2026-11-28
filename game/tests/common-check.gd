@@ -14,7 +14,7 @@ func _initialize():
 	var s=Session.new(data)
 	check("village",s.structures.filter(func(b):return b.team=="player" and b.type in Session.FORTS+Session.PRODUCERS).is_empty() and s.structures.filter(func(b):return b.type=="dwelling").size()==4)
 	check("map",s.map.width==224 and s.map.height==96)
-	var sea=s.route(s.world([100,49]),s.world(s.map.ports.island.landing),"worker")
+	var sea=s.route(s.world(s.map.ports.mainland.rally),s.world(s.map.ports.island.landing),"worker")
 	check("water blocks walking",sea.is_empty() or sea[-1].distance_to(s.world(s.map.ports.island.landing))>5)
 	var cost=s.res.wood
 	check("build farm",s.build("farm",Vector2i(47,54)))
@@ -81,8 +81,10 @@ func _check_building_rules():
 			check("demolish %d"%rotation,s.build("demolish",second) and gate.dead and not s.occupied.has(at) and not s.occupied.has(second) and s.res.stone==stone+refund)
 	var s=Session.new(data)
 	check("protect initial keep",not s.build("demolish",Vector2i(s.player_keep.gx,s.player_keep.gz)))
+	# Spawn on open ground before laying the trap; spawn clearance correctly
+	# relocates units requested inside an already occupied building footprint.
+	var u=s.spawn_unit("spearman","enemy",s.world([47,54]));var hp=u.hp
 	s.build("pitch",Vector2i(47,54));var pitch=s.occupied[Vector2i(47,54)]
-	var u=s.spawn_unit("spearman","enemy",s.pos(pitch));var hp=u.hp
 	s.ignite();s._fire(.5)
 	check("pitch damages",u.hp<hp)
 	s._fire(8)
@@ -174,5 +176,14 @@ func _check_terrain():
 				eligible+=1;var before=s.res.duplicate()
 				if not s.build("farm",Vector2i(x,z)) and before==s.res:rejected+=1
 	check("steep or wet building rejection",eligible>20 and rejected==eligible,{"tested":eligible,"rejected":rejected})
-	var before_gate=s.res.duplicate()
-	check("gate checks entire slope footprint",s.cell(Vector2i(23,5)).buildable and s.cell(Vector2i(24,5)).buildable and not s.build("gate",Vector2i(23,5),1) and s.res==before_gate)
+	var gate_at=Vector2i(23,5)
+	# The slope may now be forested. Clear its real tree footprint before testing
+	# the foundation rule; dense woodland itself must still reject construction.
+	var gate_cells=s.footprint("gate",gate_at,1)
+	for tree in s.trees:
+		if gate_cells.has(Vector2i(tree.gx,tree.gz)):tree.wood=0;tree.regrow=65
+	s._rebuild_grids();var before_gate=s.res.duplicate()
+	var support=s.foundation(s.footprint("gate",gate_at,1))
+	check("gentle slope accepts a supported gate",s.cell(gate_at).buildable and s.cell(gate_at+Vector2i.RIGHT).buildable and s.build("gate",gate_at,1) and s.res.stone==before_gate.stone-data.buildings.gate.cost.stone)
+	var gate=s.occupied.get(gate_at,{})
+	check("gate foundation reaches the highest support",not gate.is_empty() and absf(gate.y-support.y)<.0001 and absf(gate.foundation_bottom-support.x)<.0001)

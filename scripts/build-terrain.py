@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 from terrain_field import Landscape,smooth,noise,rect_distance
 from fortress_layout import structures as fortress_structures
+from natural_scenery import wooden_bridge,pitch_seep,bedrock_outcrop
 
 ROOT=Path(__file__).resolve().parent.parent
 LIB=ROOT/'content/model-library'
@@ -39,10 +40,31 @@ def mesh_arrays(x,z,h,c,res,w,d,terrain_id=11):
 def build():
  spec=json.loads(SPEC.read_text('utf-8'));base=json.loads((LIB/'world.json').read_text('utf-8'));blob=zlib.decompress((LIB/'geometry.bin.z').read_bytes())
  w,d=spec['grid'];res=spec['samplesPerCell'];margin=spec['contextMargin'];field=Landscape(spec);rng=np.random.default_rng(spec['seed'])
+ initial_structures=fortress_structures(base,spec)
  print('Sampling shared landscape',flush=True)
  xs=np.arange(-margin,w+margin+1/res,1/res);zs=np.arange(-margin,d+margin+1/res,1/res);x,z=np.meshgrid(xs,zs);f=field.sample(x,z)
- h=np.round(f['height'],5);dz,dx=np.gradient(h,1/res,1/res);slope=np.hypot(dx,dz)
- rock=smooth(.45,1.0,slope)*.8+smooth(4,11,h)*.25;rock=np.clip(rock,0,1)
+ h=f['height'].copy()
+ # Only real initial building footprints have a fitted foundation seat.
+ # No resource-yard rectangle or road corridor is carved into the landscape.
+ for structure in initial_structures:
+  cells0=np.asarray(structure['cells']);lo=cells0.min(axis=0);hi=cells0.max(axis=0)+1
+  rect=[lo[0],lo[1],hi[0],hi[1]];cx,cz=(lo+hi)*.5
+  iy=int(round((cz+margin)*res));ix=int(round((cx+margin)*res));target=float(f['height'][iy,ix])
+  seat=1-smooth(0,.65,rect_distance(x,z,rect))
+  h=h*(1-seat)+target*seat
+ h=np.round(h,5);dz,dx=np.gradient(h,1/res,1/res);slope=np.hypot(dx,dz)
+ # Bedrock is exposed by slope and erosion, with soil/lichen breaking up the
+ # margins. A shared palette keeps resource exposures part of the same mountain.
+ exposure=.68+noise(x*.23,z*.19,417)*.32
+ rock=np.clip(smooth(.38,.88,slope)*exposure+smooth(5,12,h)*.23,0,1)
+ # Weathered seams continue upslope into the ridge rather than leaving resource
+ # tokens standing in a clean grass circle. This is colour only, not a new wall.
+ for kind in ['stone','iron']:
+  for gx,gz in spec['map']['deposits'][kind]:
+   seam=np.exp(-((x-(gx-.7))/2.0)**2-((z-(gz+.5))/.95)**2)
+   rock=np.maximum(rock,seam*(.32+noise(x*.65,z*.45,71)*.22))
+ # Soft eroded stream banks are soil, never granite walls.
+ rock*=smooth(1.7,3.8,f['canal'])
  color=f['color']*(1-rock[:,:,None])+f['rock']*rock[:,:,None]
  geometry=Geometry();old_ids={}
  def remap(n):
@@ -53,9 +75,10 @@ def build():
   for child in n['children']:remap(child)
   return n
  data=copy.deepcopy(base);data['schema']=2;data['map']=copy.deepcopy(spec['map']);data['map']['terrainVersion']=2;data['map']['routeChecks']=spec['routeChecks'];data['staticNodes']=[]
- data['structures']=fortress_structures(base,spec)
+ data['structures']=initial_structures
  island_shift=spec['map']['island']['x']-base['map']['island']['x'];origin_shift=(w-base['map']['width'])/2
- # Keep only the original model library and actual bridges/docks/boats, not old terrain or baked dressing.
+ # Models remain available for paid construction and transport during play.
+ # Starting terrain does not inherit unregistered manmade decoration batches.
  for model in data['models'].values():remap(model)
  inset=margin*res;core=h[inset:inset+d*res+1,inset:inset+w*res+1].copy()
  def sample_height(gx,gz):
@@ -65,32 +88,29 @@ def build():
  def support(gx,gz):
   if any(r[0]<=gx<r[2] and r[1]<=gz<r[3] for r in field.bridges):return .4
   return sample_height(gx,gz)
+ def context_height(gx,gz):
+  xx=float(np.clip((gx+margin)*res,0,h.shape[1]-1.00001));zz=float(np.clip((gz+margin)*res,0,h.shape[0]-1.00001));ix=int(xx);iz=int(zz);tx=xx-ix;tz=zz-iz
+  a,b,c,dd=h[iz,ix],h[iz,ix+1],h[iz+1,ix],h[iz+1,ix+1]
+  return float(a*(1-tx)+b*(tx-tz)+dd*tz if tx>=tz else a*(1-tz)+dd*tx+c*(tz-tx))
  # Structures keep their original meshes and grid footprints; only the island moves.
  for s in data['structures']:
   s['y']=support(s['x']+w/2,s['z']+d/2)
   if 'model' in s:s['model']['position'][1]=s['y'];remap(s['model'])
- for i in [3,5,6,7,8,9,10,12,13]:
-  n=copy.deepcopy(base['staticNodes'][i])
-  if i in [5,6,12,13]:
-   # These imported batches have world-space vertices and identity transforms.
-   # Move each disconnected island prop/dock without stretching any triangle.
-   def relocate_batch(part):
-    if 'geo' in part:
-     g=base['geometries'][part['geo']];start=g['offset'];end=start+g['count']*48
-     vv=np.frombuffer(blob[start:end],dtype='<f4').reshape(-1,12).copy();ii=np.frombuffer(blob[end:end+g['indexCount']*4],dtype='<u4')
-     offshore=vv[:,0]>=28
-     assert np.all(np.ptp(offshore[ii.reshape(-1,3)].astype(int),axis=1)==0),'Prop crosses relocation boundary'
-     vv[:,0]+=offshore*island_shift-origin_shift;part['geo']=geometry.add(vv,ii)
-    for child in part['children']:relocate_batch(child)
-   relocate_batch(n)
-  else:
-   remap(n);n['position'][0]+=(island_shift if i in [7,8,9,10] else 0)-origin_shift
-  if i in [3,4]:n['position'][1]=support(n['position'][0]+w/2,n['position'][2]+d/2)
-  data['staticNodes'].append(n)
+ campfire=remap(copy.deepcopy(base['staticNodes'][3]));campfire['position'][0]-=origin_shift
+ campfire['position'][1]=support(campfire['position'][0]+w/2,campfire['position'][2]+d/2)
+ campfire.update(name='Initial village campfire',initialBuilding='campfire');data['staticNodes'].append(campfire)
+ for bridge in spec['bridges']:
+  x0,z0,x1,z1=bridge['rect'];geo=wooden_bridge(geometry,x1-x0,z1-z0)
+  data['staticNodes'].append(node('Wooden village bridge '+bridge['name'],geo,[(x0+x1)/2-w/2,0,(z0+z1)/2-d/2],bridge=bridge['rect'],material='timber'))
  for deposit in data['deposits']:
   deposit['x']-=origin_shift
   deposit['y']=support(deposit['gx']+.5,deposit['gz']+.5)
-  if deposit['model']:deposit['model']['position'][0]-=origin_shift;deposit['model']['position'][1]=deposit['y'];remap(deposit['model'])
+  if deposit['kind']=='pitch':deposit['model']=node('Natural pitch seep',pitch_seep(geometry,1558+deposit['gx']),[deposit['x'],deposit['y'],deposit['z']])
+  elif deposit['kind'] in ['stone','iron']:
+   geo=bedrock_outcrop(geometry,deposit['kind'],spec['seed']+deposit['gx']*83+deposit['gz']*193,
+                      (deposit['gx']+.5,deposit['gz']+.5),sample_height,spec['geology'])
+   deposit['model']=node('Weathered '+deposit['kind']+' bedrock exposure',geo,
+                         [deposit['x'],deposit['y'],deposit['z']],naturalOutcrop=True)
  print('Building terrain and shoreline meshes',flush=True)
  vertices,triangles,slope=mesh_arrays(x,z,h,color,res,w,d)
  terrain_geo=geometry.add(vertices,triangles);data['staticNodes'].insert(0,node('Yongchang terrain',terrain_geo,terrain=True))
@@ -105,7 +125,11 @@ def build():
   start=len(water_vertices)
   for p in poly:water_vertices.append([p[0],level,p[2],0,1,0,1,1,1,1,0,.72*math.exp((p[1]-level)/.22)])
   for j in range(1,len(poly)-1):water_indices.extend([start,start+j,start+j+1])
- water_geo=geometry.add(water_vertices,water_indices);data['staticNodes'].insert(1,node('Tidal channels and sea',water_geo,water=True))
+ water_array=np.asarray(water_vertices)
+ wx=np.clip(np.rint((water_array[:,0]+w/2+margin)*res).astype(int),0,len(xs)-1)
+ wz=np.clip(np.rint((water_array[:,2]+d/2+margin)*res).astype(int),0,len(zs)-1)
+ water_array[:,10]=1-smooth(2,8,f['coast'][wz,wx])
+ water_geo=geometry.add(water_array,water_indices);data['staticNodes'].insert(1,node('Tidal channels and sea',water_geo,water=True))
  # Logical cells derive from the exact render height grid, including triangle interpolation.
  cx,cz=np.meshgrid(np.arange(w)+.5,np.arange(d)+.5);cf=field.sample(cx,cz);cells=[]
  for gz in range(d):
@@ -113,22 +137,29 @@ def build():
    heights=core[gz*res:(gz+1)*res+1,gx*res:(gx+1)*res+1]
    hh=sample_height(gx+.5,gz+.5);sl=float(np.max(slope[inset+gz*res:inset+(gz+1)*res+1,inset+gx*res:inset+(gx+1)*res+1]));relief=float(heights.max()-heights.min())
    bridge=any(r[0]<=gx+.5<r[2] and r[1]<=gz+.5<r[3] for r in field.bridges)
+   low=float(heights.min());high=float(heights.max())
    water=hh<level;walk=not water and sl<=spec['maxWalkSlope']
-   ground='water' if water else 'bedrock' if sl>spec['maxWalkSlope'] else 'dirt_road' if cf['road'][gz,gx]<.2 else 'paddy' if cf['field'][gz,gx]>0 else 'tidal_mud' if cf['coast'][gz,gx]<6 else 'upland_grass'
+   ground='water' if water else 'bedrock' if sl>spec['maxWalkSlope'] else 'tidal_mud' if cf['wet'][gz,gx]>.42 else 'upland_grass'
    biome='river' if water else 'cliff' if not walk else 'road' if ground=='dirt_road' else 'paddy' if ground=='paddy' else 'wetland' if ground=='tidal_mud' else 'plains'
    if bridge:ground='bridge';biome='road';walk=True;hh=.4;relief=0;sl=0
    for name,px,pz,radius in [('limestone',21,41,4.2),('iron',22,63,4.2),('pitchBog',81,65,3.1)]:
     if math.hypot(gx+.5-px,gz+.5-pz)<radius and walk and not bridge:biome=name
-   buildable=walk and not bridge and relief<=spec['maxBuildRelief'] and ground!='tidal_mud'
-   c={'h':round(hh,5),'ground':ground,'biome':biome,'bridge':bridge,'walkable':bool(walk),'buildable':bool(buildable),'slope':round(sl,5),'relief':round(relief,5),'color':[round(float(v),4) for v in color[inset+gz*res+1,inset+gx*res+1]]}
+   buildable=walk and not bridge and low>level+.015 and ground!='tidal_mud'
+   obstacle='' if buildable or bridge or water else 'marsh' if ground=='tidal_mud' else 'bank' if low<=level+.015 else 'slope'
+   c={'h':round(hh,5),'ground':ground,'biome':biome,'bridge':bridge,'walkable':bool(walk),'buildable':bool(buildable),'obstacle':obstacle,'minHeight':round(low,5),'maxHeight':round(high,5),'slope':round(sl,5),'relief':round(relief,5),'color':[round(float(v),4) for v in color[inset+gz*res+1,inset+gx*res+1]]}
    cells.append(c)
  data['cells']=cells
  # Forests have a dense interior, feathered irregular edges, and preserved lane clearances.
  print('Planting forest groups and low dressing',flush=True)
- templates=[];seen=set()
+ templates=[];template_roots=[];template_species=[];template_autumn=[];seen=set()
  for tree in base['trees']:
   if tree['model'].get('geo') in seen:continue
   seen.add(tree['model'].get('geo'));templates.append(tree['model'])
+  g=base['geometries'][tree['model']['geo']];v=np.frombuffer(blob,dtype='<f4',count=g['count']*12,offset=g['offset']).reshape(-1,12)
+  template_roots.append(v[v[:,1]<.025,:3])
+  # The preserved library contains three variants each: willow, pine, broadleaf, bamboo.
+  height=float(v[:,1].max());template_species.append('willow' if height<2.1 else 'bamboo' if height>2.5 else 'broadleaf' if 2.25<height<2.4 else 'pine')
+  leaves=v[v[:,10]==7,6:9];template_autumn.append(bool(len(leaves) and leaves[:,0].mean()>leaves[:,1].mean()*1.1))
  protected=set()
  for s in data['structures']:
   for gx,gz in s['cells']:
@@ -140,86 +171,94 @@ def build():
  for dep in data['deposits']:
   for a in range(-2,3):
    for b in range(-2,3):protected.add((dep['gx']+a,dep['gz']+b))
- trees=[]
- for gz in range(2,d-2):
-  for gx in range(2,w-2):
-   c=cells[gz*w+gx]
-   if not c['walkable'] or c['bridge'] or (gx,gz) in protected or c['slope']>.42 or cf['road'][gz,gx]<1.8 or cf['field'][gz,gx]>0 or cf['coast'][gz,gx]<3 or cf['canal'][gz,gx]<1:continue
-   probability=cf['forest'][gz,gx]
-   # A few riparian trees connect forest groups without carpeting construction space.
-   if 25<gx<90 and 1.0<cf['canal'][gz,gx]<2.5:probability=max(probability,.13)
-   if rng.random()>probability:continue
-   model=remap(copy.deepcopy(templates[int(rng.integers(len(templates)))]));xx=gx+.5+float(rng.uniform(-.13,.13));zz=gz+.5+float(rng.uniform(-.13,.13));scale=float(rng.uniform(.9,1.25));angle=float(rng.uniform(0,math.tau))
-   model['position']=[xx-w/2,support(xx,zz),zz-d/2];model['quaternion']=[0,math.sin(angle/2),0,math.cos(angle/2)];model['scale']=[scale]*3
-   trees.append({'gx':gx,'gz':gz,'x':xx-w/2,'z':zz-d/2,'wood':40,'model':model})
- # Ensure the first lumber mill has a nearby real wood source.
+ trees=[];tree_cells=set();tree_points=[];tree_buckets={}
+ vegetation=spec['vegetation'];spacing=vegetation['minTrunkSpacing']
+ candidates=rng.uniform([.4,.4],[w-.4,d-.4],(vegetation['candidateCount'],2));candidate_field=field.sample(candidates[:,0],candidates[:,1])
+ for i,(xx,zz) in enumerate(candidates):
+  gx,gz=int(xx),int(zz);c=cells[gz*w+gx]
+  if (gx,gz) in tree_cells or (gx,gz) in protected or c['ground']=='water' or c['bridge'] or c['slope']>vegetation['maxTreeSlope'] or candidate_field['wet'][i]>.15 or candidate_field['road'][i]<1.1 or candidate_field['canal'][i]<1.45:continue
+  probability=candidate_field['forest'][i]
+  # Future farming clearings have irregular wooded fringes, not a categorical ban.
+  if candidate_field['field'][i]>0:probability*=.14
+  if rng.random()>probability*.95:continue
+  nearby=[p for bx in range(gx-1,gx+2) for bz in range(gz-1,gz+2) for p in tree_buckets.get((bx,bz),[])]
+  if any((xx-a)**2+(zz-b)**2<spacing**2 for a,b in nearby):continue
+  weights=[]
+  for template_index,species in enumerate(template_species):
+   weight={'pine':.65,'broadleaf':1.8,'bamboo':.8,'willow':.08}[species]
+   if c['h']>2 or c['slope']>.35:weight={'pine':2.2,'broadleaf':1.0,'bamboo':.12,'willow':0}[species]
+   elif candidate_field['canal'][i]<5:weight={'pine':.1,'broadleaf':1.1,'bamboo':1.0,'willow':2.2}[species]
+   if template_autumn[template_index]:weight*=vegetation['autumnVariantWeight']
+   weights.append(weight)
+  weights=np.array(weights);idx=int(rng.choice(len(templates),p=weights/weights.sum()))
+  scale=float(rng.uniform(.88,1.2));angle=float(rng.uniform(0,math.tau));co=math.cos(angle);si=math.sin(angle)
+  roots=template_roots[idx]*scale;root_x=xx+roots[:,0]*co+roots[:,2]*si;root_z=zz-roots[:,0]*si+roots[:,2]*co
+  supports=np.array([support(a,b) for a,b in zip(root_x,root_z)])
+  # Reject exposed ledges and seat the actual visible root ring into its soil.
+  if np.ptp(supports)>.23 or supports.min()<level+.035:continue
+  model=remap(copy.deepcopy(templates[idx]));base_y=float(supports.min())-.02
+  model['position']=[float(xx-w/2),base_y,float(zz-d/2)];model['quaternion']=[0,math.sin(angle/2),0,math.cos(angle/2)];model['scale']=[scale]*3
+  trees.append({'gx':gx,'gz':gz,'x':float(xx-w/2),'z':float(zz-d/2),'wood':40,'species':template_species[idx],'model':model});tree_cells.add((gx,gz));tree_points.append((xx,zz));tree_buckets.setdefault((gx,gz),[]).append((xx,zz))
  if not any(math.hypot(t['gx']-45,t['gz']-38)<9 for t in trees):
   for gx,gz in [(42,33),(45,32),(48,33)]:
-   if cells[gz*w+gx]['walkable'] and (gx,gz) not in protected:
-    model=remap(copy.deepcopy(templates[0]));model['position']=[gx+.5-w/2,support(gx+.5,gz+.5),gz+.5-d/2]
-    trees.append({'gx':gx,'gz':gz,'x':gx+.5-w/2,'z':gz+.5-d/2,'wood':40,'model':model})
+   if cells[gz*w+gx]['walkable'] and (gx,gz) not in protected and (gx,gz) not in tree_cells:
+    model=remap(copy.deepcopy(templates[0]));model['position']=[gx+.43-w/2,support(gx+.43,gz+.62)-.025,gz+.62-d/2]
+    trees.append({'gx':gx,'gz':gz,'x':gx+.43-w/2,'z':gz+.62-d/2,'wood':40,'model':model})
  data['trees']=trees
- # Batched grass/reeds: visual ground cover is ankle-high and never substitutes for solid blockers.
+ # Continue the same woodland beyond the playable boundary. These inaccessible
+ # backdrop trees have no resource state and are culled in small spatial batches.
+ backdrop={};back_rng=np.random.default_rng(spec['seed']+2903);back_cells=set();back_buckets={}
+ points=back_rng.uniform([-margin+.5,-margin+.5],[w+margin-.5,d+margin-.5],(vegetation['backdropCandidateCount'],2))
+ points=points[(points[:,0]<0)|(points[:,0]>=w)|(points[:,1]<0)|(points[:,1]>=d)]
+ bf=field.sample(points[:,0],points[:,1])
+ for i,(xx,zz) in enumerate(points):
+  gx,gz=int(math.floor(xx)),int(math.floor(zz));ix=int((xx+margin)*res);iz=int((zz+margin)*res);sl=float(slope[iz,ix])
+  if (gx,gz) in back_cells or bf['water'][i] or bf['wet'][i]>.15 or sl>vegetation['maxTreeSlope'] or bf['canal'][i]<1.45 or back_rng.random()>bf['forest'][i]*.95:continue
+  near=[p for bx in range(gx-1,gx+2) for bz in range(gz-1,gz+2) for p in back_buckets.get((bx,bz),[])+tree_buckets.get((bx,bz),[])]
+  if any((xx-a)**2+(zz-b)**2<spacing**2 for a,b in near):continue
+  species='pine' if bf['height'][i]>2 or sl>.35 else 'willow' if bf['canal'][i]<5 else 'broadleaf'
+  choices=[j for j,kind in enumerate(template_species) if kind==species and not template_autumn[j]]
+  idx=int(back_rng.choice(choices));scale=float(back_rng.uniform(.88,1.2));angle=float(back_rng.uniform(0,math.tau));co=math.cos(angle);si=math.sin(angle)
+  roots=template_roots[idx]*scale;root_x=xx+roots[:,0]*co+roots[:,2]*si;root_z=zz-roots[:,0]*si+roots[:,2]*co
+  supports=np.array([context_height(a,b) for a,b in zip(root_x,root_z)])
+  if np.ptp(supports)>.23 or supports.min()<level+.035:continue
+  geo=remap(copy.deepcopy(templates[idx]))['geo'];key=(geo,gx//24,gz//24)
+  matrix=[co*scale,0,-si*scale,0,0,scale,0,0,si*scale,0,co*scale,0,float(xx-w/2),float(supports.min())-.02,float(zz-d/2),1]
+  backdrop.setdefault(key,[]).append({'matrix':matrix,'color':[1,1,1]});back_cells.add((gx,gz));back_buckets.setdefault((gx,gz),[]).append((xx,zz))
+ for (geo,cx,cz),instances in backdrop.items():data['staticNodes'].append(node('Backdrop woodland %d %d %d'%(geo,cx,cz),geo,instances=instances,naturalWoodland=True))
+ # Ground cover is scattered in continuous coordinates. Terrain wetness and
+ # broad patch noise drive density; no five-tufts-per-grid-cell stencil.
  def blades(reed=False):
   vv=[];ii=[]
-  for i in range(5 if reed else 3):
-   angle=i*2.399;xx=math.cos(angle)*.11;zz=math.sin(angle)*.11;height=.42+i*.07 if reed else .16+i*.035;width=.025 if reed else .045
-   color=[.17,.24,.095] if not reed else [.22,.29,.12]
+  for i in range(7 if reed else 5):
+   angle=i*2.399;xx=math.cos(angle)*.16;zz=math.sin(angle)*.16;height=.38+i*.045 if reed else .12+i*.026;width=.035 if reed else .06
+   tint=[.16,.235,.09] if not reed else [.24,.28,.12]
    start=len(vv)
-   for p in [[xx-width,0,zz],[xx+width,0,zz],[xx+.06,height,zz+.03]]:vv.append([*p,0,1,0,*color,1,11,0])
+   for p in [[xx-width,0,zz],[xx+width,0,zz],[xx+.04,height,zz+.025]]:vv.append([*p,0,1,0,*tint,1,0,0])
    ii.extend([start,start+2,start+1])
   return geometry.add(vv,ii)
  grass_geo=blades();reed_geo=blades(True);dress={'grass':[],'reeds':[]}
- points=rng.uniform([1,1],[w-1,d-1],(6500,2));pf=field.sample(points[:,0],points[:,1])
+ points=rng.uniform([.3,.3],[w-.3,d-.3],(40000,2));pf=field.sample(points[:,0],points[:,1]);patch=noise(points[:,0]*.38,points[:,1]*.38,903)
  for i,(xx,zz) in enumerate(points):
   gx,gz=int(xx),int(zz);c=cells[gz*w+gx]
-  if not c['walkable'] or c['bridge'] or (gx,gz) in protected or pf['road'][i]<.8 or pf['field'][i]>0:continue
-  reed=pf['coast'][i]<5 or pf['canal'][i]<2.2
-  if not reed and pf['forest'][i]<.12 and rng.random()>.15:continue
-  scale=float(rng.uniform(.7,1.4));angle=float(rng.uniform(0,math.tau));co=math.cos(angle)*scale;si=math.sin(angle)*scale
-  matrix=[co,0,-si,0,0,scale,0,0,si,0,co,0,float(xx-w/2),support(xx,zz),float(zz-d/2),1]
+  if c['bridge'] or (gx,gz) in protected or not c['walkable'] or pf['water'][i] or c['slope']>.45:continue
+  reed=pf['wet'][i]>.1 and pf['coast'][i]<4 or 0<pf['canal'][i]<1.4
+  probability=(.25+patch[i]*.65) if reed else .1*pf['forest'][i]+.016
+  if rng.random()>probability or patch[i]<.25:continue
+  scale=float(rng.uniform(.65,1.25));angle=float(rng.uniform(0,math.tau));co=math.cos(angle)*scale;si=math.sin(angle)*scale
+  # Lowest visible blade roots sample multiple positions to avoid levitation.
+  base_y=min(support(xx,zz),support(xx-.18,zz),support(xx+.18,zz),support(xx,zz-.18),support(xx,zz+.18))-.015
+  matrix=[co,0,-si,0,0,scale,0,0,si,0,co,0,float(xx-w/2),base_y,float(zz-d/2),1]
   dress['reeds' if reed else 'grass'].append({'matrix':matrix,'color':[1,1,1]})
- for key,geo in [('grass',grass_geo),('reeds',reed_geo)]:data['staticNodes'].append(node('Batched '+key,geo,instances=dress[key]))
- # Low stone ledges read as exposed bedrock. Large boulders are restricted to
- # already impassable slopes, so solid-looking art never blocks an open lane.
- def rock_mesh(seed):
-  rr=np.random.default_rng(seed);vertices=[]
-  for y,radius in [(-.20,.85),(.15,1.0),(.65,.60)]:
-   for i in range(7):
-    a=i*math.tau/7;rad=radius*rr.uniform(.86,1.12);vertices.append([math.cos(a)*rad,y+rr.uniform(-.07,.07),math.sin(a)*rad])
-  vertices.append([.1,.82,-.05]);faces=[]
-  for row in range(2):
-   for i in range(7):
-    j=(i+1)%7;a=row*7+i;b=row*7+j;c=(row+1)*7+i;dd=(row+1)*7+j
-    faces.extend([[a,b,dd],[a,dd,c]])
-  for i in range(7):faces.append([14+i,14+(i+1)%7,21])
-  vv=[];indices=[];positions=np.asarray(vertices)
-  for face in faces:
-   a,b,c=positions[face];normal=np.cross(b-a,c-a);normal/=np.linalg.norm(normal)
-   if np.dot(normal,(a+b+c)/3)<0:face=face[::-1];a,b,c=positions[face];normal=-normal
-   tint=rr.uniform(.90,1.08)*np.array([.16,.18,.17]);start=len(vv)
-   for p in [a,b,c]:vv.append([*p,*normal,*tint,1,11,0])
-   indices.extend([start,start+2,start+1])
-  return geometry.add(vv,indices)
- rock_geos=[rock_mesh(121+i) for i in range(3)];rock_instances=[[],[],[]]
- for gz in range(1,d-1):
-  for gx in range(1,w-1):
-   c=cells[gz*w+gx]
-   if c['biome']!='cliff' or c['h']<1.6 or cf['road'][gz,gx]<3 or rng.random()>.15:continue
-   xx=gx+.5;zz=gz+.5
-   # Keep silhouettes safely within blocked terrain.
-   if any(cells[(gz+b)*w+gx+a]['walkable'] for a,b in [(-1,0),(1,0),(0,-1),(0,1)]):continue
-   k=int(rng.integers(3));scale=float(rng.uniform(.65,1.6));sy=float(rng.uniform(.5,1.1));angle=float(rng.uniform(0,math.tau));co=math.cos(angle)*scale;si=math.sin(angle)*scale
-   rock_instances[k].append({'matrix':[co,0,-si,0,0,sy,0,0,si,0,co,0,xx-w/2,support(xx,zz)-.12,zz-d/2,1],'color':[1,1,1]})
- for i,geo in enumerate(rock_geos):data['staticNodes'].append(node('Exposed granite '+str(i),geo,instances=rock_instances[i]))
- data['terrain']={'version':2,'resolution':res,'width':w*res+1,'depth':d*res+1,'heights':[round(float(v),5) for v in core.ravel()], 'waterLevel':level,'maxWalkSlope':spec['maxWalkSlope'],'maxBuildRelief':spec['maxBuildRelief'],'specSha256':sha(SPEC),'heightMinimum':float(core.min()),'heightMaximum':float(core.max())}
+ for key,geo in [('grass',grass_geo),('reeds',reed_geo)]:data['staticNodes'].append(node('Batched '+key,geo,instances=dress[key],naturalCover=True))
+ data['terrain']={'version':2,'resolution':res,'width':w*res+1,'depth':d*res+1,'heights':[round(float(v),5) for v in core.ravel()], 'waterLevel':level,'maxWalkSlope':spec['maxWalkSlope'],'maxBuildRelief':spec['maxBuildRelief'],'specSha256':sha(SPEC),'heightMinimum':float(core.min()),'heightMaximum':float(core.max()),'landscapeRevision':spec['landscapeRevision'],'restrictionModel':'visible surface: water intersection, slope, wet soil'}
  data['geometries']=geometry.items;data['geometryCount']=len(geometry.items);data['map']['camera']['home']=[46,47]
  data['map']['terrainMarkers']=[{'name':'大罗山麓','cell':[13,48]},{'name':'永昌村落','cell':[43,43]},{'name':'渠田平原','cell':[49,68]},{'name':'滨海湿地','cell':[91,75]},{'name':'黑鲨岛寨（虚构）','cell':spec['map']['enemyKeep']}]
  # Compact away the unused old terrain/flora geometry. Asset model vertices are copied exactly.
  (OUT/'world.json').write_text(json.dumps(data,ensure_ascii=False,separators=(',',':')),encoding='utf-8')
  (OUT/'geometry.bin.z').write_bytes(zlib.compress(geometry.bytes,9))
- source_files=[SPEC,Path(__file__),ROOT/'scripts/terrain_field.py',ROOT/'scripts/fortress_layout.py',LIB/'world.json',LIB/'geometry.bin.z']
- receipt={'schema':2,'sources':{p.relative_to(ROOT).as_posix():sha(p) for p in source_files},'outputs':{name:sha(OUT/name) for name in ['world.json','geometry.bin.z']},'geometryBytes':len(geometry.bytes),'triangles':sum(g['indexCount']//3 for g in geometry.items),'trees':len(trees),'dressing':{k:len(v) for k,v in dress.items()},'cells':dict(Counter(c['ground'] for c in cells)),'history':spec['history']}
+ source_files=[SPEC,Path(__file__),ROOT/'scripts/terrain_field.py',ROOT/'scripts/fortress_layout.py',ROOT/'scripts/natural_scenery.py',LIB/'world.json',LIB/'geometry.bin.z']
+ receipt={'schema':2,'sources':{p.relative_to(ROOT).as_posix():sha(p) for p in source_files},'outputs':{name:sha(OUT/name) for name in ['world.json','geometry.bin.z']},'geometryBytes':len(geometry.bytes),'triangles':sum(g['indexCount']//3 for g in geometry.items),'trees':len(trees),'backdropTrees':len(back_cells),'dressing':{k:len(v) for k,v in dress.items()},'cells':dict(Counter(c['ground'] for c in cells)),'history':spec['history']}
  (OUT/'terrain-build.json').write_text(json.dumps(receipt,ensure_ascii=False,indent=2),encoding='utf-8')
  preview(spec,data,cf)
  print(json.dumps({'trees':len(trees),'geometryBytes':len(geometry.bytes),'compressedBytes':(OUT/'geometry.bin.z').stat().st_size,'cells':receipt['cells']},ensure_ascii=False),flush=True)

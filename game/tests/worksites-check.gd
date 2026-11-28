@@ -71,8 +71,11 @@ func run():
 			var sk=model.get_meta("animal_skeleton") if role=="knight" else model.get_meta("skeleton");var u={"id":1,"role":role,"moving":true}
 			var name="leg0" if role=="knight" else "rightLeg"
 			Rig.pose(model,u,0,assets);var before=sk.get_bone_pose_rotation(sk.find_bone(name))
-			for frame in range(1,31):model.position.z=frame/60.0*.8;Rig.pose(model,u,frame/60.0,assets)
-			check("animated bones "+role,before.angle_to(sk.get_bone_pose_rotation(sk.find_bone(name)))>.05)
+			var excursion=0.0
+			for frame in range(1,121):
+				model.position.z=frame/60.0*.8;Rig.pose(model,u,frame/60.0,assets)
+				excursion=maxf(excursion,before.angle_to(sk.get_bone_pose_rotation(sk.find_bone(name))))
+			check("animated bones "+role,excursion>.12,excursion)
 		model.queue_free()
 	for job in Rig.TOOLS:
 		var model=assets.model("player_unit_peasant");Rig.attach(model);root.add_child(model)

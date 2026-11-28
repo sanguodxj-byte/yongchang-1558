@@ -1,0 +1,14 @@
+{
+  "id": "watch",
+  "title": "烽堠守望",
+  "model": "lyria-3.5",
+  "prompt": "Original instrumental music for a historical Chinese coastal defence strategy game, 90 seconds. Twilight watch above stone walls at Yongchang, vigilance and shared resolve. Low guqin ostinato, xiao and sheng answering phrases, small Chinese frame drum and muted bronze chime accents, restrained bowed strings. 88 BPM. Begin spare and quietly purposeful, build measured tension without a sudden drop or jump scare, release into the same four-note pentatonic home motif. Wood, breath and bronze textures, broad but transparent sound with room for battle sound effects. No vocals, no chanting, no modern drum kit, no electronic arpeggiator, no blockbuster brass. No hard cut at either end; graceful phrase ending.",
+  "generatedAt": "2026-11-27T19:54:36.379167+00:00",
+  "elapsedSeconds": 22.51,
+  "file": "game/assets/music/watch.mp3",
+  "sha256": "dab94f2c53ab01a4ddb5eab16f6856ff5ca1e5db1361722d91dfde935d9359dc",
+  "bytes": 2091661,
+  "duration": 86.830958,
+  "postprocessing": "None",
+  "humanListeningApproved": false
+}

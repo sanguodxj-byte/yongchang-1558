@@ -1,0 +1,1379 @@
+{
+  "recordedAt": "2026-11-28T11:56:59.736742+00:00",
+  "acceptance": {
+    "passed": true,
+    "pckSha256": "d54f2fc23077b7d6e6df0d0111b146edfcfce7c6ec9c845d16fee983151e32c2",
+    "worldSha256": "5fa57deb9df763d673500ad19a88a17747f611c8f213e2c0e50a86b3042f5b1d",
+    "checks": {
+      "waterDefenses": {
+        "passed": true,
+        "report": ".build/water-defenses/logic.json",
+        "sha256": "a247a929ce35848baa882657a029cebd64e3a84f581d76ec99da96cab51344ec",
+        "count": 42
+      },
+      "common": {
+        "passed": true,
+        "report": ".build/common-report.json",
+        "sha256": "ef7ba278c2a051d0a61f9f0ecaf8a2a054f3ca9f842a08f8beb125df733a69a7",
+        "count": 110
+      },
+      "rts": {
+        "passed": true,
+        "report": ".build/water-defenses/rts.json",
+        "sha256": "cd1f2de5e5e389bf378526edd55e828dae40ef404ed98a84b0b5f2f5fa2a1587",
+        "count": 11
+      },
+      "archive": {
+        "passed": true,
+        "report": ".build/completion/archive/report.json",
+        "sha256": "3ca1c70d75e87ec129a4d60423fb2f7d31e782a14bc5b57f4eba75da5b816573",
+        "count": 19
+      },
+      "visual": {
+        "passed": true,
+        "report": ".build/water-defenses/views/visual.json",
+        "sha256": "b2ab78cb863d097d4ac965088a6de201d05cdcce6155a6f6b466d80f7b8d3a1b",
+        "count": 4
+      },
+      "web": {
+        "passed": true,
+        "report": ".build/water-defenses/web/report.json",
+        "sha256": "43294d06eb00b96b04f1f8f7d9d4282b154ec69745d22efea2a38a67351af07b",
+        "count": 12
+      },
+      "dora": {
+        "passed": true,
+        "report": ".build/water-defenses/dora/report.json",
+        "sha256": "eae11adac0fd42839de09f16de8bd7772d8a2f8b2b027324535ea2689f122719",
+        "count": 4
+      },
+      "packages": {
+        "passed": true,
+        "report": "dist/VALIDATION.json",
+        "sha256": "7af995074bee4ef3a723c25419852b84c99f762b66af9346dfab8a22ed8da5b1",
+        "count": 0
+      }
+    },
+    "scope": "Water-gate construction, full-city fixture, pathing, combat, saves, model/UI render and real Dora/H5 input. Touch is browser emulation; no physical phone run."
+  },
+  "reports": {
+    "waterDefenses": {
+      "checks": [
+        {
+          "detail": null,
+          "name": "new catalog leaves world data and save identity unchanged",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "invalid placement preserves resources and structures [\"wall\", (36, 18), 0]",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "invalid placement preserves resources and structures [\"gate\", (36, 18), 0]",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "invalid placement preserves resources and structures [\"farm\", (35, 18), 0]",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "invalid placement preserves resources and structures [\"wall\", (37, 28), 0]",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "invalid placement preserves resources and structures [\"waterGate\", (45, 20), 0]",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "invalid placement preserves resources and structures [\"waterGate\", (36, 18), 1]",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "invalid placement preserves resources and structures [\"waterGate\", (150, 48), 0]",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "invalid placement preserves resources and structures [\"waterGate\", (37, 28), 0]",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bank accepts visible wall foundation",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "water gate replaces friendly bank wall and spans both banks",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "water gate charges once",
+          "passed": true
+        },
+        {
+          "detail": [
+            [
+              34,
+              18
+            ],
+            [
+              35,
+              18
+            ],
+            [
+              36,
+              18
+            ],
+            [
+              37,
+              18
+            ],
+            [
+              38,
+              18
+            ]
+          ],
+          "name": "span covers all bank cells",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "water stays solid in every navigation grid",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bank blocker applies to enemy",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bank blocker applies to player",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "save restore retains span catalog and water navigation",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "water gate participates in fort repairs",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "destroy restores banks without making a land bridge",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "insufficient resources are atomic",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "old session archive remains compatible",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "rotated water gate builds 1",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "rotated span follows its wall axis 1",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "demolish water gate restores every cell 1",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "rotated water gate builds 2",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "rotated span follows its wall axis 2",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "demolish water gate restores every cell 2",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "rotated water gate builds 3",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "rotated span follows its wall axis 3",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "demolish water gate restores every cell 3",
+          "passed": true
+        },
+        {
+          "detail": [],
+          "name": "full two-canal city perimeter is buildable",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "land gate upgrades perimeter",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "intact city has no enemy bank bypass",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "friendly traffic crosses land gate and internal bridges",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "enemy route plans a breach rather than stopping at the city",
+          "passed": true
+        },
+        {
+          "detail": {
+            "hpAfter": 107.0,
+            "hpBefore": 667.0,
+            "x": -45.5
+          },
+          "name": "enemy physically attacks the gate and cannot walk through it",
+          "passed": true
+        },
+        {
+          "detail": {
+            "hpAfter": 615.0,
+            "hpBefore": 1035.0
+          },
+          "name": "enemy attacks the water gate from its bank",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "destroyed water gate opens an actual bank breach",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridgehead gate is legal without building on timber",
+          "passed": true
+        },
+        {
+          "detail": "(-69.9999, 0.41388, -19.5)",
+          "name": "friendly crosses bridgehead gate spearman",
+          "passed": true
+        },
+        {
+          "detail": "(-70.05176, 0.413679, -19.5)",
+          "name": "friendly crosses bridgehead gate ram",
+          "passed": true
+        },
+        {
+          "detail": "(-70.02673, 0.413776, -19.5)",
+          "name": "friendly crosses bridgehead gate peasant",
+          "passed": true
+        }
+      ],
+      "passed": true,
+      "sourceHashes": {
+        "game/assets/world.json": "5fa57deb9df763d673500ad19a88a17747f611c8f213e2c0e50a86b3042f5b1d",
+        "game/scripts/session.gd": "6510d9d3bc9dca2cef9c71efaf5f119d12b1a65cad9bb3df168e3d5bc034990a",
+        "game/scripts/canal_defenses.gd": "77fdbc97c13b8ca6c10dec728e19d93a603c27fc34e98add405c04d6a7a03c11",
+        "game/scripts/unit_separation.gd": "a62115aeeb9991f62f973fa114c76f8c9d02c481699b9ffd65f33e65a0e412b8",
+        "game/scripts/session_archive.gd": "2a47c0aa7e5a40ee9381812cf73ff1b7a7c53433c4073fb340fda03674ce6188",
+        "game/tests/water-defenses-check.gd": "4ad39803fb902ecf379a77032809278c421e7c21d143b55707826c994e9d6d20"
+      }
+    },
+    "common": {
+      "checks": [
+        {
+          "detail": null,
+          "name": "village",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "map",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "water blocks walking",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "build farm",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "build cost",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "invalid placement",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "build lumber",
+          "passed": true
+        },
+        {
+          "detail": {
+            "food": 324.0,
+            "wood": 176.0,
+            "workers": 2
+          },
+          "name": "physical delivery",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "build quarry",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "build ironMine",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "build pitchRig",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "build fletcher",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "build blacksmith",
+          "passed": true
+        },
+        {
+          "detail": {
+            "armor": 52.0,
+            "bows": 54.0,
+            "food": 934.0,
+            "gold": 160.0,
+            "iron": 29.0,
+            "maxPop": 28.0,
+            "oil": 44.0,
+            "peasants": 1.0,
+            "stone": 127.0,
+            "wood": 396.0
+          },
+          "name": "all supply chains",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "paddy bonus",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "recruit",
+          "passed": true
+        },
+        {
+          "detail": {
+            "built": 0,
+            "deliveries": 0,
+            "enemy_landed": 0,
+            "kills": 38,
+            "player_landed": 38,
+            "shots": 921
+          },
+          "name": "assault landing",
+          "passed": true
+        },
+        {
+          "detail": {
+            "buildings": 8,
+            "donations": 0,
+            "enemy_hp": -38.4800000000007,
+            "fortress": {
+              "cannons": 0,
+              "crossing_seconds": 29.5833333333333,
+              "gates": 0,
+              "keep_hp": 0,
+              "keep_max_hp": 5000.0,
+              "towers": 0
+            },
+            "guard_used": false,
+            "map": [
+              224.0,
+              96.0
+            ],
+            "martial_bonus": false,
+            "night": false,
+            "paddy_bonus": true,
+            "player_hp": 1550.0,
+            "policy": "generous",
+            "resources": {
+              "armor": 4.0,
+              "bows": 6.0,
+              "food": 0.0,
+              "gold": 327.899999999999,
+              "iron": 18.0,
+              "maxPop": 28.0,
+              "oil": 16.0,
+              "peasants": 8.0,
+              "stone": 85.0,
+              "wood": 92.0
+            },
+            "stance": "attack",
+            "state": "victory",
+            "stats": {
+              "built": 0,
+              "deliveries": 0,
+              "enemy_landed": 0,
+              "kills": 38,
+              "player_landed": 38,
+              "shots": 921
+            },
+            "time": 131.199999999995,
+            "units": 26,
+            "wall_bonus": false,
+            "wave": 1
+          },
+          "name": "assault victory",
+          "passed": true
+        },
+        {
+          "detail": 0,
+          "name": "no walking water",
+          "passed": true
+        },
+        {
+          "detail": {
+            "built": 0,
+            "deliveries": 0,
+            "enemy_landed": 9,
+            "kills": 1,
+            "player_landed": 0,
+            "shots": 0
+          },
+          "name": "enemy lands",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "gate rotation 0",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "gate footprint 0",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "friendly gate passage 0",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "repair 0",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "demolish 0",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "gate rotation 1",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "gate footprint 1",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "friendly gate passage 1",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "repair 1",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "demolish 1",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "gate rotation 2",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "gate footprint 2",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "friendly gate passage 2",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "repair 2",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "demolish 2",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "gate rotation 3",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "gate footprint 3",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "friendly gate passage 3",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "repair 3",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "demolish 3",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "protect initial keep",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "pitch damages",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "pitch consumed",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "donation cap",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "reinforcement cap",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "policy balanced",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "policy harsh",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "policy generous",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "recruit spearman",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "recruit archer",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "recruit swordsman",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "recruit knight",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "recruit trebuchet",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "recruit ram",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "wave 1",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "wave 2",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "wave 3",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "wave 4",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "archer garrison",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "garrison release",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "lord enters keep",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "lord leaves keep",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "defeat",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "fresh session",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "shared terrain field",
+          "passed": true
+        },
+        {
+          "detail": {
+            "length": 48.8284270763397,
+            "waypoints": 49
+          },
+          "name": "terrain route village-east-port",
+          "passed": true
+        },
+        {
+          "detail": {
+            "length": 73.3847759962082,
+            "waypoints": 69
+          },
+          "name": "terrain route village-north-port",
+          "passed": true
+        },
+        {
+          "detail": {
+            "length": 32.5563489198685,
+            "waypoints": 29
+          },
+          "name": "terrain route quarry-stockpile",
+          "passed": true
+        },
+        {
+          "detail": {
+            "length": 36.9705624580383,
+            "waypoints": 33
+          },
+          "name": "terrain route iron-stockpile",
+          "passed": true
+        },
+        {
+          "detail": {
+            "length": 14.4142135381699,
+            "waypoints": 15
+          },
+          "name": "terrain route island-port-camp",
+          "passed": true
+        },
+        {
+          "detail": {
+            "maxError": 3.0517578125e-05,
+            "samples": 396
+          },
+          "name": "terrain pointer follows surface",
+          "passed": true
+        },
+        {
+          "detail": 3.17051890306175e-05,
+          "name": "terrain oblique pick [20, 39]",
+          "passed": true
+        },
+        {
+          "detail": 3.03841079585254e-05,
+          "name": "terrain oblique pick [22, 63]",
+          "passed": true
+        },
+        {
+          "detail": 3.11775038426276e-05,
+          "name": "terrain oblique pick [47, 54]",
+          "passed": true
+        },
+        {
+          "detail": 3.21045008604415e-05,
+          "name": "terrain oblique pick [77, 48]",
+          "passed": true
+        },
+        {
+          "detail": 3.22828345815651e-05,
+          "name": "terrain oblique pick [93, 75]",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [37, 29] worker false",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [37, 29] worker true",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [37, 29] knight false",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [37, 29] knight true",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [37, 29] ram false",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [37, 29] ram true",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [37, 49] worker false",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [37, 49] worker true",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [37, 49] knight false",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [37, 49] knight true",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [37, 49] ram false",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [37, 49] ram true",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [37, 69] worker false",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [37, 69] worker true",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [37, 69] knight false",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [37, 69] knight true",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [37, 69] ram false",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [37, 69] ram true",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [53, 49] worker false",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [53, 49] worker true",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [53, 49] knight false",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [53, 49] knight true",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [53, 49] ram false",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [53, 49] ram true",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [53, 69] worker false",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [53, 69] worker true",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [53, 69] knight false",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [53, 69] knight true",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [53, 69] ram false",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "bridge [53, 69] ram true",
+          "passed": true
+        },
+        {
+          "detail": {
+            "blockedSteps": 0,
+            "supportErrors": 0
+          },
+          "name": "units remain on walkable surface",
+          "passed": true
+        },
+        {
+          "detail": {
+            "rejected": 53,
+            "tested": 53
+          },
+          "name": "steep or wet building rejection",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "gentle slope accepts a supported gate",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "gate foundation reaches the highest support",
+          "passed": true
+        }
+      ],
+      "content_hash": "5fa57deb9df763d673500ad19a88a17747f611c8f213e2c0e50a86b3042f5b1d",
+      "passed": true,
+      "sourceHashes": {
+        "game/assets/world.json": "5fa57deb9df763d673500ad19a88a17747f611c8f213e2c0e50a86b3042f5b1d",
+        "game/scripts/session.gd": "6510d9d3bc9dca2cef9c71efaf5f119d12b1a65cad9bb3df168e3d5bc034990a",
+        "game/scripts/unit_separation.gd": "a62115aeeb9991f62f973fa114c76f8c9d02c481699b9ffd65f33e65a0e412b8",
+        "game/scripts/terrain_surface.gd": "a42bf025fa3eb58bcf6cf44d5c411acf5986f368a9efe703d89c4598473270f6",
+        "game/tests/common-check.gd": "a97a17345ef78c9cec62c7cf91a63d738997d4d7d199903f4c808ef101a6ab15"
+      }
+    },
+    "rts": {
+      "checks": [
+        {
+          "detail": {
+            "count": 0,
+            "examples": []
+          },
+          "name": "clear coastal land accepts construction",
+          "passed": true
+        },
+        {
+          "detail": {
+            "count": 0,
+            "examples": []
+          },
+          "name": "every dry terrain restriction names its actual surface",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "water rejects placement without charging",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "queued move keeps first destination",
+          "passed": true
+        },
+        {
+          "detail": "(inf, inf, inf)",
+          "name": "queued route finishes at second destination",
+          "passed": true
+        },
+        {
+          "detail": 0.0,
+          "name": "stop overrides global attack and transport",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "stopped defenders do not block other squads assembling",
+          "passed": true
+        },
+        {
+          "detail": {
+            "after": 0.0,
+            "before": 96.0
+          },
+          "name": "enemy click attacks while global stance is defend",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "explicit move does not turn into an unwanted chase",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "cleared tree cell accepts a building",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "cleared trees do not regrow through new buildings",
+          "passed": true
+        }
+      ],
+      "passed": true
+    },
+    "archive": {
+      "checks": [
+        {
+          "detail": null,
+          "name": "training runs production without triggering raids",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "archive excludes model and dictionary references",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "archive validates",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "restore snapshot exact",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "restored entities share live references",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "40 seconds after load match continuous run",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "in-progress sea trip completes after load",
+          "passed": true
+        },
+        {
+          "detail": "",
+          "name": "native save writes",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "native read retains exact session",
+          "passed": true
+        },
+        {
+          "detail": "",
+          "name": "atomic replacement saves again",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "damaged main slot recovers backup",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "other map refuses old save",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "unknown version rejected",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "dangling worker rejected",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "all resource and travel destinations exist",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "inspector shows real ox boost",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "inspector explains blocked destination",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "unassigned workshop explains food recovery",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "inspector shows actual missing ingredient",
+          "passed": true
+        }
+      ],
+      "passed": true,
+      "sourceHashes": {
+        "game/scripts/session.gd": "6510d9d3bc9dca2cef9c71efaf5f119d12b1a65cad9bb3df168e3d5bc034990a",
+        "game/scripts/session_archive.gd": "2a47c0aa7e5a40ee9381812cf73ff1b7a7c53433c4073fb340fda03674ce6188",
+        "game/scripts/save_store.gd": "96770d82707ec0baab330ab3c725e61caa5d1c8bd3d36fd83d9ddaa0f5ee3e1c",
+        "game/scripts/site_inspector.gd": "26f3bf8173a39ed9ac352bd35eb958ac09ec567d59aab9601d17f046491b1017",
+        "game/tests/archive-check.gd": "26f045ffb37aade682f7f5a6e9759e2993234020604ccea0f56d23ea6663ac42"
+      }
+    },
+    "visual": {
+      "checks": [
+        {
+          "detail": "[]",
+          "name": "actual city fixture builds",
+          "passed": true
+        },
+        {
+          "name": "desktop construction card exists",
+          "passed": true
+        },
+        {
+          "name": "watergate card selects shared command",
+          "passed": true
+        },
+        {
+          "name": "compact construction card exists",
+          "passed": true
+        }
+      ],
+      "passed": true,
+      "worldHash": "5fa57deb9df763d673500ad19a88a17747f611c8f213e2c0e50a86b3042f5b1d",
+      "sourceHashes": {
+        "game/scripts/assets.gd": "419f8535c6e6089de940337421bc2cfc102cb12ff02bcfcc4d2e234ffd90041a",
+        "game/scripts/build_preview.gd": "ce6b3a47e1eeb3c830fdcadcdc0f8c37029d503eace08d129863edad86977c4d",
+        "game/scripts/canal_defenses.gd": "77fdbc97c13b8ca6c10dec728e19d93a603c27fc34e98add405c04d6a7a03c11",
+        "game/scripts/compact_ui.gd": "df72b1f6790c5c07c1fc0408d56d6b19814bd9ad3a6a2ef979e885116b460715",
+        "game/scripts/contact_shadows.gd": "eea30c25a1d50dafd17053c47b5c358ee84d9d1a652bbb0a632d82158dd253b2",
+        "game/scripts/idle_crowd.gd": "588085942706cac8c501b37b6248f2d02d4c85e74b0216d964ed2c79633b038a",
+        "game/scripts/main.gd": "b0d4e2d1861cdef6c2c5e1821aabf084067323679492a339245467ba4f42a3bd",
+        "game/scripts/minimap.gd": "f80f9e22e16181a575954f8765749cd9d93075f006556c018c51ec6448b650c8",
+        "game/scripts/mobile_ui.gd": "23a07231820067a16f0b58bb75a48071eea82f5d904c8ebdbfb9e3cbeb024f8a",
+        "game/scripts/motion_clips.gd": "02219ab33d0544ae67480a849db01caf7ae4e290205052fa4ffd33d4d10bcfee",
+        "game/scripts/performance_probe.gd": "6cbbb7643abba32dae87af921bde67eaef2cfad9ff4905aafbd6ec96cee81fb3",
+        "game/scripts/player_guidance.gd": "3d7060a2a473039638e064386560b9e6ca3f213769f02d730a82857c730c71a9",
+        "game/scripts/rts_controls.gd": "b59963004991b2f6f30eda85945675eb4871254bee6207c7bafbd2533158a95d",
+        "game/scripts/save_store.gd": "96770d82707ec0baab330ab3c725e61caa5d1c8bd3d36fd83d9ddaa0f5ee3e1c",
+        "game/scripts/session.gd": "6510d9d3bc9dca2cef9c71efaf5f119d12b1a65cad9bb3df168e3d5bc034990a",
+        "game/scripts/session_archive.gd": "2a47c0aa7e5a40ee9381812cf73ff1b7a7c53433c4073fb340fda03674ce6188",
+        "game/scripts/site_inspector.gd": "26f3bf8173a39ed9ac352bd35eb958ac09ec567d59aab9601d17f046491b1017",
+        "game/scripts/sound.gd": "d6a73fcd4c262f2b073f9b36abaeadf486679097caa48f05248f10901de7698d",
+        "game/scripts/terrain_surface.gd": "a42bf025fa3eb58bcf6cf44d5c411acf5986f368a9efe703d89c4598473270f6",
+        "game/scripts/touch_controls.gd": "749bae5f6f06364de4cf444295ec46c354136cbcc1d8c77c8898babbd95b7a24",
+        "game/scripts/unit_rig.gd": "a018e687d1d7ecb0bed8744fae0122dc987fa6634632fbbf29cf2e7b70110fb2",
+        "game/scripts/unit_separation.gd": "a62115aeeb9991f62f973fa114c76f8c9d02c481699b9ffd65f33e65a0e412b8",
+        "game/scripts/watergate_model.gd": "99f318ac0a3a73157bf534635ee4dc05d17ec45714cb51be137e2f1e45cfd7d3",
+        "game/scripts/work_props.gd": "ab046ad0e2505703a798fa2f15da520a15de54c4890b95246108215eecd597e9"
+      }
+    },
+    "web": {
+      "passed": true,
+      "cases": [
+        {
+          "name": "desktop",
+          "passed": true,
+          "checks": [
+            {
+              "name": "real input mode",
+              "passed": true,
+              "detail": null
+            },
+            {
+              "name": "new card selects water gate",
+              "passed": true,
+              "detail": null
+            },
+            {
+              "name": "wrong orientation rejects without charge",
+              "passed": true,
+              "detail": null
+            },
+            {
+              "name": "paid water gate exists in game",
+              "passed": true,
+              "detail": [
+                {
+                  "cell": [
+                    38,
+                    38
+                  ],
+                  "hp": 900,
+                  "type": "waterGate"
+                }
+              ]
+            },
+            {
+              "name": "cost is stone16 wood4 iron2",
+              "passed": true,
+              "detail": null
+            },
+            {
+              "name": "water gate survives real save and page reload",
+              "passed": true,
+              "detail": null
+            }
+          ]
+        },
+        {
+          "name": "compact-touch",
+          "passed": true,
+          "checks": [
+            {
+              "name": "real input mode",
+              "passed": true,
+              "detail": null
+            },
+            {
+              "name": "new card selects water gate",
+              "passed": true,
+              "detail": null
+            },
+            {
+              "name": "touch preview resolves both banks",
+              "passed": true,
+              "detail": {
+                "cell": [
+                  38,
+                  38
+                ],
+                "count": 1,
+                "hint": "跨 4 格（含两岸） · 点确认营造",
+                "valid": true
+              }
+            },
+            {
+              "name": "paid water gate exists in game",
+              "passed": true,
+              "detail": [
+                {
+                  "cell": [
+                    38,
+                    38
+                  ],
+                  "hp": 900,
+                  "type": "waterGate"
+                }
+              ]
+            },
+            {
+              "name": "cost is stone16 wood4 iron2",
+              "passed": true,
+              "detail": null
+            },
+            {
+              "name": "water gate survives real save and page reload",
+              "passed": true,
+              "detail": null
+            }
+          ]
+        }
+      ],
+      "errors": [],
+      "pckSha256": "d54f2fc23077b7d6e6df0d0111b146edfcfce7c6ec9c845d16fee983151e32c2"
+    },
+    "dora": {
+      "passed": true,
+      "pckSha256": "d54f2fc23077b7d6e6df0d0111b146edfcfce7c6ec9c845d16fee983151e32c2",
+      "worldHash": "5fa57deb9df763d673500ad19a88a17747f611c8f213e2c0e50a86b3042f5b1d",
+      "lastError": "",
+      "checks": [
+        {
+          "passed": true,
+          "name": "native play"
+        },
+        {
+          "passed": true,
+          "name": "native watergate card"
+        },
+        {
+          "detail": {
+            "iron": 18,
+            "stone": 85,
+            "buttons": {},
+            "wood": 92,
+            "hint": "两岸过远；R转向横跨较窄内渠",
+            "selected": "waterGate",
+            "valid": false,
+            "waterGates": 0,
+            "cell": [
+              38,
+              38
+            ]
+          },
+          "passed": true,
+          "name": "native wrong rotation has no charge"
+        },
+        {
+          "detail": {
+            "iron": 16,
+            "stone": 69,
+            "buttons": {},
+            "wood": 88,
+            "hint": "已有建筑占地",
+            "selected": "waterGate",
+            "valid": false,
+            "waterGates": 1,
+            "cell": [
+              38,
+              38
+            ]
+          },
+          "passed": true,
+          "name": "native paid watergate"
+        }
+      ]
+    },
+    "packages": {
+      "passed": true,
+      "archives": {
+        "h5": {
+          "file": "Yongchang1558-H5.zip",
+          "bytes": 144275333,
+          "sha256": "c0b17b515bd48c684a8f01374c2a0f300c31921471e302cbcc1c3d4c3a3a627f",
+          "pckSha256": "d54f2fc23077b7d6e6df0d0111b146edfcfce7c6ec9c845d16fee983151e32c2",
+          "files": 51
+        },
+        "dora": {
+          "file": "Yongchang1558-Dora.zip",
+          "bytes": 134067429,
+          "sha256": "b268e55f63e6325bee9c9c8b5eccf78601639f26e9722b72fd3f23279cd667af",
+          "pckSha256": "d54f2fc23077b7d6e6df0d0111b146edfcfce7c6ec9c845d16fee983151e32c2",
+          "files": 47
+        }
+      },
+      "pckSha256": "d54f2fc23077b7d6e6df0d0111b146edfcfce7c6ec9c845d16fee983151e32c2",
+      "pckBytes": 67474800
+    }
+  }
+}

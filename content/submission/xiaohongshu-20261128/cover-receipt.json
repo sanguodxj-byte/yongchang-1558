@@ -1,0 +1,159 @@
+{
+  "dimensions": [
+    1080,
+    1440
+  ],
+  "aspectRatio": "3:4",
+  "method": "Crop and typeset existing game title illustration; no new image generation",
+  "artwork": "game/assets/ui/title-guohua.png",
+  "artworkSha256": "3b8c4efab34927bed95753d920c42e0207b8ba12f43ba113f177fb898e4125d0",
+  "artworkProvenance": "content/cover-generation.json",
+  "font": "game/assets/title-kai.ttf",
+  "fontSha256": "f4b8a34d1f838fe411540cb7c97b1c384ac9738a876c4104500bc42508b2312a",
+  "theme": "game/assets/ui/theme.json",
+  "textBoxes": [
+    {
+      "text": "守望1558：永昌风云",
+      "bounds": [
+        121.0,
+        52.0,
+        403.0,
+        80.0
+      ],
+      "fontSize": 30
+    },
+    {
+      "text": "做国风筑城游戏",
+      "bounds": [
+        64.0,
+        145.0,
+        526.0,
+        206.5
+      ],
+      "fontSize": 66
+    },
+    {
+      "text": "被几块石头",
+      "bounds": [
+        60.0,
+        246.0,
+        590.0,
+        343.5
+      ],
+      "fontSize": 106
+    },
+    {
+      "text": "难住了。",
+      "bounds": [
+        60.0,
+        369.0,
+        484.0,
+        468.0
+      ],
+      "fontSize": 106
+    },
+    {
+      "text": "山林、矿点，又改了一轮",
+      "bounds": [
+        68.0,
+        502.0,
+        398.0,
+        530.5
+      ],
+      "fontSize": 30
+    },
+    {
+      "text": "开",
+      "bounds": [
+        933.0,
+        160.0,
+        965.0,
+        188.0
+      ],
+      "fontSize": 32
+    },
+    {
+      "text": "发",
+      "bounds": [
+        933.0,
+        200.0,
+        965.0,
+        230.0
+      ],
+      "fontSize": 32
+    },
+    {
+      "text": "手",
+      "bounds": [
+        933.0,
+        240.0,
+        965.0,
+        269.5
+      ],
+      "fontSize": 32
+    },
+    {
+      "text": "记",
+      "bounds": [
+        933.0,
+        280.0,
+        965.0,
+        305.5
+      ],
+      "fontSize": 32
+    },
+    {
+      "text": "格尼尔工作室",
+      "bounds": [
+        64.0,
+        1362.0,
+        232.0,
+        1388.5
+      ],
+      "fontSize": 28
+    },
+    {
+      "text": "国风筑城 · 开发记录",
+      "bounds": [
+        696.0,
+        1364.0,
+        913.5,
+        1387.0
+      ],
+      "fontSize": 24
+    }
+  ],
+  "contrast": {
+    "ink/paper": 10.07,
+    "vermilion/paper": 5.37,
+    "muted/paper": 4.86,
+    "onDark/vermilion": 5.54
+  },
+  "files": {
+    "cover-1080x1440.jpg": {
+      "sha256": "82e36bc1f26e5f18f186fcf9be3f97d33d99aef31257de76538c4768a17beccd",
+      "bytes": 581752
+    },
+    "thumbnail-360x480.jpg": {
+      "sha256": "688da4458fa641e7e2b4f969a3af80911b50a08d1dd7080c4cbd203288c7ab3a",
+      "bytes": 61631
+    },
+    "cover-1080x1440.png": {
+      "sha256": "ab2ddbf50435ba391f738d7b9ee284072b7b71ecfe54455972131106f833b6f3",
+      "bytes": 1701181
+    }
+  },
+  "visualQa": {
+    "reviewedAtUtc": "2026-11-28T09:49:41.609869+00:00",
+    "fullSizeReviewed": true,
+    "thumbnailReviewed": true,
+    "textClippingFound": false,
+    "reviewer": "implementing agent"
+  },
+  "post": {
+    "titleCharacters": 16,
+    "bodyCharacters": 601,
+    "textFile": "发布文案.txt",
+    "sha256": "ae1949fe5b6310fec7cffc6eab3056ccc0e57b04189eeaea5bf7c3b1c7a4a006"
+  }
+}

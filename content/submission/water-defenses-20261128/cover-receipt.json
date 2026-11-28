@@ -1,0 +1,292 @@
+{
+  "method": "Typeset current game screenshots; no generative image call or scene alteration.",
+  "captureScript": "game/tests/water-defenses-visual.gd",
+  "fixture": "Paid construction calls with supplied test materials and cleared perimeter trees; not the starting village or an economy playthrough.",
+  "font": "game/assets/title-kai.ttf",
+  "fontSha256": "f4b8a34d1f838fe411540cb7c97b1c384ac9738a876c4104500bc42508b2312a",
+  "theme": "game/assets/ui/theme.json",
+  "contrast": {
+    "ink/paper": 10.07,
+    "vermilion/paper": 5.37,
+    "muted/paper": 4.86,
+    "onDark/vermilion": 5.54
+  },
+  "textBoxes": {
+    "cover-1080x1440": [
+      {
+        "text": "守望1558：永昌风云",
+        "bounds": [
+          122.0,
+          57.0,
+          404.0,
+          85.0
+        ]
+      },
+      {
+        "text": "河道穿城",
+        "bounds": [
+          62.0,
+          148.0,
+          502.0,
+          252.0
+        ]
+      },
+      {
+        "text": "城墙闭合",
+        "bounds": [
+          62.0,
+          274.0,
+          502.0,
+          378.5
+        ]
+      },
+      {
+        "text": "水门 · 岸边石基 · 桥头城门",
+        "bounds": [
+          68.0,
+          415.0,
+          454.0,
+          445.5
+        ]
+      },
+      {
+        "text": "开",
+        "bounds": [
+          945.0,
+          163.0,
+          975.0,
+          189.5
+        ]
+      },
+      {
+        "text": "发",
+        "bounds": [
+          945.0,
+          205.0,
+          975.0,
+          233.0
+        ]
+      },
+      {
+        "text": "手",
+        "bounds": [
+          945.0,
+          247.0,
+          975.0,
+          274.5
+        ]
+      },
+      {
+        "text": "记",
+        "bounds": [
+          945.0,
+          289.0,
+          975.0,
+          313.0
+        ]
+      },
+      {
+        "text": "本轮游戏实景 · 围城验收布局",
+        "bounds": [
+          64.0,
+          1122.0,
+          390.5,
+          1146.0
+        ]
+      },
+      {
+        "text": "双渠四口，连成一圈",
+        "bounds": [
+          278.0,
+          1183.0,
+          656.0,
+          1223.0
+        ]
+      },
+      {
+        "text": "水从拱下过，敌军须破防。",
+        "bounds": [
+          280.0,
+          1253.0,
+          640.0,
+          1281.5
+        ]
+      },
+      {
+        "text": "开局仍是村落，城防由你修筑。",
+        "bounds": [
+          280.0,
+          1304.0,
+          672.0,
+          1331.0
+        ]
+      },
+      {
+        "text": "格尼尔工作室",
+        "bounds": [
+          64.0,
+          1399.0,
+          214.0,
+          1422.5
+        ]
+      },
+      {
+        "text": "2026.11.28  /  05",
+        "bounds": [
+          669.0,
+          1401.0,
+          874.0,
+          1421.0
+        ]
+      }
+    ],
+    "cover-1600x900": [
+      {
+        "text": "守望1558：永昌风云",
+        "bounds": [
+          120.0,
+          63.0,
+          384.0,
+          89.5
+        ]
+      },
+      {
+        "text": "河道穿城",
+        "bounds": [
+          60.0,
+          185.0,
+          436.0,
+          274.0
+        ]
+      },
+      {
+        "text": "城墙闭合",
+        "bounds": [
+          60.0,
+          302.0,
+          436.0,
+          391.5
+        ]
+      },
+      {
+        "text": "水门 · 岸边石基 · 桥头城门",
+        "bounds": [
+          68.0,
+          449.0,
+          408.0,
+          476.0
+        ]
+      },
+      {
+        "text": "双渠四口，连成一圈",
+        "bounds": [
+          68.0,
+          531.0,
+          392.0,
+          565.5
+        ]
+      },
+      {
+        "text": "水从拱下过，敌军须破防。",
+        "bounds": [
+          68.0,
+          594.0,
+          404.0,
+          620.5
+        ]
+      },
+      {
+        "text": "游戏实景 · 围城验收布局，开局仍由玩家修筑",
+        "bounds": [
+          650.0,
+          762.0,
+          1191.5,
+          788.0
+        ]
+      },
+      {
+        "text": "格尼尔工作室 · 开发手记 05",
+        "bounds": [
+          64.0,
+          843.0,
+          391.0,
+          868.0
+        ]
+      },
+      {
+        "text": "2026.11.28",
+        "bounds": [
+          1300.0,
+          845.0,
+          1433.0,
+          863.0
+        ]
+      }
+    ]
+  },
+  "files": {
+    "bridgehead.png": {
+      "sha256": "881cbf8dd7423cd0a248eb1fabd9e311251fcf2ec09e30edd25e9adb71a3a102",
+      "bytes": 1016074,
+      "dimensions": [
+        1280,
+        800
+      ]
+    },
+    "complete-city.png": {
+      "sha256": "34a9bdd3edc546b41b26b4be0347cfcc510f272d5dcf82806c423cb2b884d9fe",
+      "bytes": 1834687,
+      "dimensions": [
+        1280,
+        800
+      ]
+    },
+    "cover-1080x1440.jpg": {
+      "sha256": "7ee5623f7ae9c347609744454455e87d5e9ea6d076c05ed4cac9f55be63bbc09",
+      "bytes": 420651,
+      "dimensions": [
+        1080,
+        1440
+      ]
+    },
+    "cover-1600x900.jpg": {
+      "sha256": "423dbff2c4e14637f1f1857dd7d52364b50be2d02a7652204c9d19a6189aba0c",
+      "bytes": 358557,
+      "dimensions": [
+        1600,
+        900
+      ]
+    },
+    "north-watergate.png": {
+      "sha256": "2621d0a09e7c836c8e1dbd7e75ba7dfe94db9891a8ce007ac3d7043d32b17096",
+      "bytes": 1146421,
+      "dimensions": [
+        1280,
+        800
+      ]
+    },
+    "thumbnail-360x480.jpg": {
+      "sha256": "bc6d5ba98652fdd5c55a735160e94fbfd19fc3876ca62813f964e089bca1dcac",
+      "bytes": 55976,
+      "dimensions": [
+        360,
+        480
+      ]
+    }
+  },
+  "license": "CC BY 4.0 for original game screenshots and cover composition; SIL OFL 1.1 for the unmodified font.",
+  "visualQa": {
+    "reviewedAtUtc": "2026-11-28T12:00:17.652948+00:00",
+    "fullSizeReviewed": true,
+    "thumbnailReviewed": true,
+    "textClippingFound": false,
+    "outOfBoundsCropFound": false,
+    "reviewer": "implementing agent"
+  },
+  "post": {
+    "titleCharacters": 12,
+    "bodyCharacters": 667,
+    "textFile": "发布文案.txt",
+    "sha256": "b2bf506604a007b45ac3773238ea2dfa4b995a83031c5a8c8b83dc52bdbcf624"
+  }
+}

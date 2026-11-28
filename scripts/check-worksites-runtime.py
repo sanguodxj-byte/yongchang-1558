@@ -3,9 +3,9 @@ import argparse,hashlib,json,math,time
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
-p=argparse.ArgumentParser();p.add_argument('--output',default='.build/worksites/live');args=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--output',default='.build/worksites/live');p.add_argument('--url',default='http://127.0.0.1:8767/');p.add_argument('--browser',help='Optional browser executable; defaults to installed Microsoft Edge');args=p.parse_args()
 root=Path(__file__).resolve().parent.parent;out=root/args.output;out.mkdir(parents=True,exist_ok=True)
-world=json.loads((root/'game/assets/world.json').read_text('utf-8'));w,h=world['map']['width'],world['map']['height'];base='http://127.0.0.1:8767/'
+world=json.loads((root/'game/assets/world.json').read_text('utf-8'));w,h=world['map']['width'],world['map']['height'];base=args.url
 report={'passed':False,'errors':[],'actions':[],'samples':[]}
 def sub(a,b):return [x-y for x,y in zip(a,b)]
 def dot(a,b):return sum(x*y for x,y in zip(a,b))
@@ -13,7 +13,7 @@ def cross(a,b):return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[
 def norm(a):return [v/math.sqrt(dot(a,a)) for v in a]
 
 with sync_playwright() as pw:
- browser=pw.chromium.launch(executable_path=r'C:\Program Files (x86)\Microsoft\EdgeCore\158.0.4370.33\msedge.exe',headless=True)
+ browser=pw.chromium.launch(headless=True,**({'executable_path':args.browser} if args.browser else {'channel':'msedge'}))
  page=browser.new_page(viewport={'width':1600,'height':1000});page.set_default_timeout(20000)
  page.on('pageerror',lambda e:report['errors'].append(str(e)))
  page.on('console',lambda m:report['errors'].append(m.text) if m.type=='error' else None)
@@ -38,7 +38,9 @@ with sync_playwright() as pw:
  def build(kind,x,z):
   center(x,z);click('营造 B');click('水乡民生');click(world['buildings'][kind]['name'])
   page.wait_for_function('(k)=>__yongchang.state.selected_build===k',arg=kind)
-  before=state();page.mouse.click(*point(x,z),delay=100)
+  page.mouse.move(*point(x,z));frame();before=state()
+  assert before['placement']['valid'],(kind,[x,z],before['placement'])
+  page.mouse.click(*point(x,z),delay=100)
   page.wait_for_function('(n)=>__yongchang.state.stats.built===n+1',arg=before['stats']['built'])
   page.keyboard.press('Escape');frame();report['actions'].append({'build':kind,'cell':[x,z],'at':state()['time']})
  try:
@@ -48,7 +50,8 @@ with sync_playwright() as pw:
   click('宗族');click('驻祠');click('宗族')
   build('quarry',19,39);page.wait_for_function('__yongchang.state.workers.some(w=>w.job==="quarry")')
   assert not any(v['job']=='oxPost' for v in state()['workers'])
-  build('oxPost',22,41);build('stockpile',25,42);build('farm',47,54);build('woodcutter',45,38)
+  # Dense woodland occupies (25,42); keep the test in the existing clearing.
+  build('oxPost',22,41);build('stockpile',24,44);build('farm',47,54);build('woodcutter',45,38)
   center(22,41);page.mouse.wheel(0,-700);frame();page.screenshot(path=str(out/'stoneworks.png'))
   initial=state()['resources']['stone'];start=time.monotonic();poses={};delivered=False
   while time.monotonic()-start<110:

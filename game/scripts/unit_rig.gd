@@ -230,6 +230,10 @@ static func pose(model:Node3D,u:Dictionary,clock:float,assets,ground:Callable=Ca
 	state.signature=signature
 	var dt=clampf(clock-state.time,0,.2);state.dt=dt
 	var travel=Vector2(model.position.x-state.position.x,model.position.z-state.position.z).length()
+	if u.has("motion_distance"):
+		var odometer=float(u.motion_distance)
+		travel=maxf(0,odometer-float(state.get("odometer",odometer)))
+		state.odometer=odometer
 	if travel>1.5:travel=0;state.feet.clear()
 	var transported=u.get("transit",false) or u.get("garrison",0)!=0
 	if state.get("transported",false)!=transported:state.feet.clear();state.walk=0.0
@@ -258,14 +262,16 @@ static func pose(model:Node3D,u:Dictionary,clock:float,assets,ground:Callable=Ca
 		phase=fposmod((clock-state.work_start)/Clips.WORK[kind].duration,1.0);clip=Clips.sample(kind,phase);lean=lerpf(lean,clip.lean,state.work)
 	lean=lerpf(lean,.08,state.carry);state.lean=lerpf(state.lean,lean,blend)
 	if state.work>.995:state.lean=lean
-	var pelvis=-.025-lerpf(.065,.115,run)*state.walk
+	# Subtle weight transfer in the torso; the contact solver retains both leg lengths.
+	var body_sway=sin(cycle*TAU)*.018*state.walk*(1.0-state.work)*(1.0-state.carry*.6)
+	var pelvis=-.025-lerpf(.055,.090,run)*state.walk
 	if state.walk<1.0:
 		for foot in state.feet.values():
 			if not foot.stance or foot.settle>0:pelvis=minf(pelvis,-.11)
 	if working:pelvis-=.018*state.work
 	if mounted:pelvis=0
 	sk.set_bone_pose_position(0,Vector3(0,pelvis,0))
-	_pose_bone(sk,"torso",Vector3(state.lean,0,0));_pose_bone(sk,"head",Vector3(-state.lean*.65,0,0))
+	_pose_bone(sk,"torso",Vector3(state.lean,-body_sway*1.1,body_sway));_pose_bone(sk,"head",Vector3(-state.lean*.65,body_sway*.5,-body_sway*.6))
 	if not mounted:
 		var targets={}
 		for side in ["left","right"]:
@@ -287,7 +293,7 @@ static func pose(model:Node3D,u:Dictionary,clock:float,assets,ground:Callable=Ca
 		for side in ["left","right"]:
 			_pose_bone(sk,side+"Leg",Vector3(-.10,0,.10 if side=="left" else -.10))
 			_pose_bone(sk,side+"LegLower",Vector3(.32,0,0));_pose_bone(sk,side+"Foot",Vector3(-.12,0,0))
-	var sway=sin(cycle*TAU)*.055*state.walk
+	var sway=sin(cycle*TAU)*.085*state.walk*(1.0-state.work)
 	var right=Vector3(.155,.46,.055+sway);var left=Vector3(-.155,.46,.055-sway)
 	var orientation=Quaternion.from_euler(Vector3(.95,0,-.25)) if kind!="" else Quaternion.IDENTITY
 	if kind!="":
@@ -297,11 +303,14 @@ static func pose(model:Node3D,u:Dictionary,clock:float,assets,ground:Callable=Ca
 		if clip.support!=0:left=left.lerp(desired+tool_basis*Vector3(0,0,clip.support),state.work)
 		else:left=left.lerp(Vector3(-.12,.55,.22),state.work)
 	elif u.get("role","") in ["archer","spearman","knight"]:
-		right=Vector3(.07,.60,.08);left=Vector3(-.01,.59,.17)
-		orientation=Quaternion.from_euler(Vector3(-.05,-.15,0))
-		if u.get("swing",0)>0:right.z-=float(u.swing)*.04
+		var attacking=float(u.get("swing",0))>0
+		var phase_attack=clampf(1-float(u.get("swing",0))/.3,0,1)
+		var thrust=sin(phase_attack*PI) if attacking else 0.0
+		right=Vector3(.095,.59,.105+thrust*.10);left=Vector3(-.015,.57,.17+thrust*.07)
+		if not attacking:right.z+=sway*.25;left.z-=sway*.15
+		orientation=Quaternion.from_euler(Vector3(-.05-thrust*.08,-.15,0))
 	elif u.get("swing",0)>0:
-		var strike=float(u.swing)/.3;right=Vector3(.12,.54,.15).lerp(Vector3(.10,.67,.25),strike);orientation=Quaternion.from_euler(Vector3(.15,-.45*strike,0))
+		var strike=sin((1-float(u.swing)/.3)*PI);right=Vector3(.15,.60,.13).lerp(Vector3(.08,.64,.29),strike);orientation=Quaternion.from_euler(Vector3(.15+strike*.35,-.45*strike,0))
 	var carry_right=Vector3(.13,.55,.235);var carry_left=Vector3(-.13,.55,.235)
 	right=right.lerp(carry_right,state.carry);left=left.lerp(carry_left,state.carry)
 	if carrying:orientation=Quaternion.IDENTITY

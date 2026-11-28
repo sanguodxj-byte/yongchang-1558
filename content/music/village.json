@@ -1,0 +1,14 @@
+{
+  "id": "village",
+  "title": "乡土晨炊",
+  "model": "lyria-3.5",
+  "prompt": "Original instrumental strategy-game music, 90 seconds. A peaceful Ming-era southeast Chinese coastal village rebuilding its home. Warm guqin plucked phrases, delicate pipa, soft xiao bamboo flute, very subtle sheng sustained harmony and quiet wooden percussion. 72 BPM, unhurried pentatonic melody, breathing room, restrained bass, detailed acoustic timbres, intimate and grounded. Develop a memorable four-note motif, two gentle variations, a quiet return. Music for sustained resource management; never sentimental melodrama. No vocals, no choir, no spoken words, no synth lead, no electric guitar, no huge trailer drums. Clear balanced recording, no clipping, no sudden loud intro. A naturally resolving beginning and ending suitable for repeated game playback.",
+  "generatedAt": "2026-11-27T19:54:13.869051+00:00",
+  "elapsedSeconds": 24.91,
+  "file": "game/assets/music/village.mp3",
+  "sha256": "cc527d102166674139f00fca8f0f4747ea75bafe42fd9a973c835bba5942bdf9",
+  "bytes": 2136174,
+  "duration": 88.685667,
+  "postprocessing": "None",
+  "humanListeningApproved": false
+}

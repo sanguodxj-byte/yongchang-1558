@@ -1,0 +1,49 @@
+{
+  "model": "lyria-3.5",
+  "provider": "Local AIStudio2API",
+  "postprocessing": "None; decoded audio bytes stored unchanged",
+  "tracks": [
+    {
+      "id": "village",
+      "title": "乡土晨炊",
+      "model": "lyria-3.5",
+      "prompt": "Original instrumental strategy-game music, 90 seconds. A peaceful Ming-era southeast Chinese coastal village rebuilding its home. Warm guqin plucked phrases, delicate pipa, soft xiao bamboo flute, very subtle sheng sustained harmony and quiet wooden percussion. 72 BPM, unhurried pentatonic melody, breathing room, restrained bass, detailed acoustic timbres, intimate and grounded. Develop a memorable four-note motif, two gentle variations, a quiet return. Music for sustained resource management; never sentimental melodrama. No vocals, no choir, no spoken words, no synth lead, no electric guitar, no huge trailer drums. Clear balanced recording, no clipping, no sudden loud intro. A naturally resolving beginning and ending suitable for repeated game playback.",
+      "generatedAt": "2026-11-27T19:54:13.869051+00:00",
+      "elapsedSeconds": 24.91,
+      "file": "game/assets/music/village.mp3",
+      "sha256": "cc527d102166674139f00fca8f0f4747ea75bafe42fd9a973c835bba5942bdf9",
+      "bytes": 2136174,
+      "duration": 88.685667,
+      "postprocessing": "None",
+      "humanListeningApproved": false
+    },
+    {
+      "id": "watch",
+      "title": "烽堠守望",
+      "model": "lyria-3.5",
+      "prompt": "Original instrumental music for a historical Chinese coastal defence strategy game, 90 seconds. Twilight watch above stone walls at Yongchang, vigilance and shared resolve. Low guqin ostinato, xiao and sheng answering phrases, small Chinese frame drum and muted bronze chime accents, restrained bowed strings. 88 BPM. Begin spare and quietly purposeful, build measured tension without a sudden drop or jump scare, release into the same four-note pentatonic home motif. Wood, breath and bronze textures, broad but transparent sound with room for battle sound effects. No vocals, no chanting, no modern drum kit, no electronic arpeggiator, no blockbuster brass. No hard cut at either end; graceful phrase ending.",
+      "generatedAt": "2026-11-27T19:54:36.379167+00:00",
+      "elapsedSeconds": 22.51,
+      "file": "game/assets/music/watch.mp3",
+      "sha256": "dab94f2c53ab01a4ddb5eab16f6856ff5ca1e5db1361722d91dfde935d9359dc",
+      "bytes": 2091661,
+      "duration": 86.830958,
+      "postprocessing": "None",
+      "humanListeningApproved": false
+    },
+    {
+      "id": "battle",
+      "title": "破浪归航",
+      "model": "lyria-3.5",
+      "prompt": "Original instrumental action-strategy game score, 90 seconds, historical Chinese coastal battle. Resolute disciplined energy, coordinated soldiers crossing the sea to break a fortress, heroic but not bombastic. Pipa rhythmic figures, low bowed strings, Chinese war drums in steady measured patterns, sheng and dizi melody, sparse bronze percussion. 112 BPM with a memorable pentatonic theme and alternating dense and open phrases. Controlled low end, warm midrange, little piercing high-frequency energy, leave space for cannons and commands. Build toward a brief hopeful cadence and a clean musical resolution. No vocals, no choir, no speech, no electric guitars, no EDM, no modern snare rolls, no wall of trailer impacts.",
+      "generatedAt": "2026-11-27T19:55:11.843613+00:00",
+      "elapsedSeconds": 35.45,
+      "file": "game/assets/music/battle.mp3",
+      "sha256": "b2bb66eafe1888477781c31dd98a81ed0f3cb66d858f5759e3ffaafcc1fc7ca8",
+      "bytes": 2222064,
+      "duration": 92.264417,
+      "postprocessing": "None",
+      "humanListeningApproved": false
+    }
+  ]
+}

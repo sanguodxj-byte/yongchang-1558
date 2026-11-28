@@ -54,6 +54,11 @@ var next_cards:Button
 var guide_button:Button
 var training_button:Button
 var save_status:Label
+var confirm_build_button:Button
+var selection_controls:HBoxContainer
+var selection_actions={}
+var touch_select_button:Button
+var map_widget
 
 func _init(owner):
 	game=owner
@@ -163,7 +168,7 @@ func _setup_hud():
 	lord_label=label("",18);lord_label.hide();play_hud.add_child(lord_label)
 	var phase=_panel(play_hud,Vector2(418,22),Vector2(276,68));phase_label=heading("",22);phase_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;phase.add_child(phase_label)
 	speed_button=button("1×",func():game.session.speed=2.0 if game.session.speed==1 else 1.0;refresh(),Vector2(64,68))
-	speed_button.set_meta("ui_label","速度");speed_button.tooltip_text="切换 1× / 2× 速度 (2)";_place(speed_button,play_hud,Vector2(702,22),Vector2(64,68))
+	speed_button.set_meta("ui_label","速度");speed_button.tooltip_text="切换 1× / 2× 速度";_place(speed_button,play_hud,Vector2(702,22),Vector2(64,68))
 	_place(_icon_button("暂停",game._pause,"icon-pause"),play_hud,Vector2(774,22),Vector2(64,68))
 	var ledger=_panel(play_hud,Vector2(850,22),Vector2(728,108));var resources=HBoxContainer.new();resources.add_theme_constant_override("separation",10);ledger.add_child(resources)
 	for key in ["wood","stone","food","gold","peasants"]:
@@ -177,6 +182,7 @@ func _setup_hud():
 	var map_panel=_panel(play_hud,Vector2(1312,196),Vector2(266,288));var map_box=VBoxContainer.new();map_box.add_theme_constant_override("separation",4);map_panel.add_child(map_box)
 	var caption=heading("永昌形胜  ·  北 ↑",22);caption.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;map_box.add_child(caption)
 	minimap=MiniMap.new();minimap.setup(game.session);minimap.navigate.connect(func(target):game.camera_target=target);map_box.add_child(minimap)
+	minimap.order.connect(func(target,queued):game._order(target,queued))
 	map_box.add_child(button("全图 M",game._overview,Vector2(218,48),"paper","icon-map"))
 	message_label=heading("",24);message_label.add_theme_color_override("font_color",color("onDark"));message_label.add_theme_color_override("font_shadow_color",color("ink"));message_label.add_theme_constant_override("shadow_offset_y",1);message_label.add_theme_constant_override("shadow_outline_size",2);message_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;message_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	_place(message_label,play_hud,Vector2(410,138),Vector2(580,84))
@@ -199,6 +205,22 @@ func _setup_hud():
 	selected_label=heading("",23);selected_label.custom_minimum_size=Vector2(310,34);selected_paper.add_child(selected_label)
 	build_controls.add_child(button("转向 R",func():game.build_rotation=(game.build_rotation+1)%4;game._refresh_ghost();refresh(),Vector2(130,64),"paper","icon-map"))
 	build_controls.add_child(button("取消",func():game._cancel_placement();tray.hide();refresh(),Vector2(110,64),"paper"));build_controls.hide()
+	confirm_build_button=button("确认营造",func():game.touch_controls.confirm_build(),Vector2(140,64),"jade");build_controls.add_child(confirm_build_button)
+	selection_controls=HBoxContainer.new();selection_controls.add_theme_constant_override("separation",8);_place(selection_controls,play_hud,Vector2(334,904),Vector2(940,64));_selection_buttons(selection_controls,Vector2(140,64))
+	touch_select_button=button("框选部队",func():game.controls.toggle_box(),Vector2(160,60));_place(touch_select_button,play_hud,Vector2(334,908),Vector2(160,60))
+
+func _selection_buttons(row:HBoxContainer,minimum:Vector2):
+	for item in [["stop","停止",game.controls.stop_selection],["attack","攻击移动",game.controls.arm_attack],["queue","追加路点",func():game.controls.queue_mode=not game.controls.queue_mode;refresh()],["box","框选部队",game.controls.toggle_box],["clear","取消选择",func():game.controls.set_selection([])]]:
+		var b=button(item[1],item[2],minimum);b.size_flags_horizontal=Control.SIZE_EXPAND_FILL;row.add_child(b);selection_actions[item[0]]=b
+
+func _camera_buttons(parent:Control):
+	var row=HBoxContainer.new();row.add_theme_constant_override("separation",4);parent.add_child(row)
+	for item in [["镜头左转",func():game.camera_yaw-=PI/4],["镜头右转",func():game.camera_yaw+=PI/4],["放大",func():game.zoom=maxf(7.5,game.zoom/1.25)],["缩小",func():game.zoom=minf(game.session.map.camera.maxZoom,game.zoom*1.25)]]:
+		var b=button(str(item[0]).trim_prefix("镜头"),item[1],Vector2(72,48));b.set_meta("ui_label",item[0]);b.tooltip_text=item[0];b.size_flags_horizontal=Control.SIZE_EXPAND_FILL;row.add_child(b)
+
+func control_help() -> String:
+	if game.controls.touch_mode:return "触屏：单指拖镜头；点部队后点地面调遣。\n框选：点框选部队，再拖出选框。\n选中后可点停止、攻击移动、追加路点、取消选择。\n营造：点地面预览，再点确认营造；城墙拖线后确认。\n双指平移/缩放；地图面板可旋转镜头。"
+	return "鼠标：左键选择/拖框，右键短按下令、拖动平移。\n中键拖动、方向键和边缘移动镜头；滚轮缩放，Q/E旋转。\nShift增选/追加路点；S停止；A后左键攻击移动。\nCtrl+数字编队；空格定位选择；H回宗祠。\n营造：左键放置、城墙拖线、R转向；右键或Esc取消。"
 
 func _setup_tray():
 	tray=_panel(play_hud,Vector2(324,658),Vector2(984,320));var box=VBoxContainer.new();box.add_theme_constant_override("separation",8);tray.add_child(box)
@@ -235,6 +257,7 @@ func toggle_popover(kind:String):
 			var stance=item[0]
 			var action=button(item[1],func():game.session.set_stance(stance);close_popover();refresh(),Vector2(268,60),"paper" if stance!="attack" else "vermilion",item[2]);popover_box.add_child(action);stance_actions[stance]=action
 	elif kind=="map":
+		_camera_buttons(popover_box)
 		for site in game.SiteInspector.locations(game.session):popover_box.add_child(button(site.name,func():game.locate(site.key),Vector2(340,52)))
 		popover_box.add_child(button("收起",close_popover,Vector2(340,52)))
 	elif kind=="site":
@@ -247,6 +270,19 @@ func close_popover() -> bool:
 
 func dismiss_outside(point:Vector2) -> bool:
 	if popover_kind!="" and not popover.get_global_rect().has_point(point):return close_popover()
+	return false
+
+func blocks_world(point:Vector2) -> bool:
+	return _blocks_world(root,point)
+
+func _blocks_world(node:Node,point:Vector2) -> bool:
+	for child in node.get_children():
+		if child is Control and child.is_visible_in_tree():
+			var control:Control=child
+			if control.clip_contents and not control.get_global_rect().has_point(point):continue
+			if control.mouse_filter!=Control.MOUSE_FILTER_IGNORE and control.get_global_rect().has_point(point):
+				if control is Button or control is ScrollContainer or control is PanelContainer or control is ColorRect or control.get_script()==MiniMap:return true
+			if _blocks_world(control,point):return true
 	return false
 
 func toggle_tray(kind:String):
@@ -294,7 +330,7 @@ func _render_cards():
 		b.pressed.connect(func():game._select_card("build" if is_build else "army",key));tray_box.add_child(b);card_buttons[key]=b
 		var v=VBoxContainer.new();v.mouse_filter=Control.MOUSE_FILTER_IGNORE;b.add_child(v);v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);v.offset_left=design.layout.cardPadding[0];v.offset_right=-design.layout.cardPadding[0];v.offset_top=design.layout.cardPadding[1];v.offset_bottom=-design.layout.cardPadding[1];v.add_theme_constant_override("separation",2)
 		v.add_child(picture(("buildings-" if is_build else "units-")+key,Vector2(112,76 if is_build else 62)))
-		var short_names={"wall":"花岗城墙","gate":"谯楼城门","tower":"空心敌台","ballista":"佛郎机炮台","pitch":"猛火油壕","demolish":"拆建","farm":"水车稻田","woodcutter":"竹木作坊","quarry":"山麓采石","ironMine":"天工铁冶","pitchRig":"熬油坊","fletcher":"神机军器局","blacksmith":"甲仗锻局","hovel":"粉墙民居","spearman":"狼筅乡勇","archer":"神机鸟铳手","swordsman":"藤牌刀兵","knight":"宗族铁骑","ram":"包铁冲车","trebuchet":"虎蹲炮车"}
+		var short_names={"wall":"花岗城墙","gate":"谯楼城门","waterGate":"跨渠水门","tower":"空心敌台","ballista":"佛郎机炮台","pitch":"猛火油壕","demolish":"拆建","farm":"水车稻田","woodcutter":"竹木作坊","quarry":"山麓采石","ironMine":"天工铁冶","pitchRig":"熬油坊","fletcher":"神机军器局","blacksmith":"甲仗锻局","hovel":"粉墙民居","spearman":"狼筅乡勇","archer":"神机鸟铳手","swordsman":"藤牌刀兵","knight":"宗族铁骑","ram":"包铁冲车","trebuchet":"虎蹲炮车"}
 		short_names.merge({"stockpile":"物资堆放场","oxPost":"水牛绑牛桩"})
 		var name_label=heading(short_names[key],22);name_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;v.add_child(name_label)
 		var price_lines=" ".join(costs.slice(0,2))+("\n"+" ".join(costs.slice(2)) if costs.size()>2 else "")
@@ -350,7 +386,7 @@ func show_screen(kind:String):
 		else:panel_box.add_child(button("保存进度",game.save_game,Vector2(620,56),"paper"))
 	panel_box.add_child(button("家风碑",func():game._info("家风碑"),Vector2(620,60),"paper","icon-book"))
 	panel_box.add_child(button("操作与史料",func():game._info("操作与史料"),Vector2(620,60),"paper","icon-controls"))
-	sound_button=button("声音 开 / 关",func():game.sound.enabled=not game.sound.enabled;refresh(),Vector2(620,60),"paper","icon-sound");panel_box.add_child(sound_button);_caption(sound_button,"音效：开启" if game.sound.enabled else "音效：关闭")
+	sound_button=button("声音 开 / 关",func():game.sound.enabled=not game.sound.enabled;refresh(),Vector2(620,60),"paper","icon-sound");panel_box.add_child(sound_button);_caption(sound_button,"声音：开启" if game.sound.enabled else "声音：关闭")
 	panel_box.add_child(button("开源与授权",func():game._info("开源与授权"),Vector2(620,60),"paper","icon-book"))
 	_rule(panel_box)
 	var row=HBoxContainer.new();row.alignment=BoxContainer.ALIGNMENT_CENTER;panel_box.add_child(row)
@@ -393,7 +429,8 @@ func refresh():
 		resource_labels[key].text=str(int(r[key]))
 	var guidance=game.PlayerGuidance.objective(s)
 	objective_label.text="下一步 · "+guidance.title+"\n"+guidance.detail
-	if game.selected_build!="":objective_label.text=s.source.buildings[game.selected_build].name+"\n"+game.PlayerGuidance.JOBS[game.selected_build]+"\n点地面放置；取消可退出。"
+	if game.selected_build!="":objective_label.text=s.source.buildings[game.selected_build].name+("\n点地面预览 · 确认后营造\n双指移动镜头\n" if game.controls.touch_mode else "\n左键放置 · R转向 · 右键取消\n")+("城墙、油壕可拖线营造\n" if game.session.source.buildings[game.selected_build].mode=="line" else "")+game.placement_hint
+	elif game.controls.has_selection():objective_label.text="已选 %d 支小队%s\n"%[game.selected_squads.size(),"与宗长" if game.lord_selected else ""]+("点地面调遣 · 单指拖镜头\n下方可停止、攻击和追加路点" if game.controls.touch_mode else "左键选择/框选 · Shift增选\n右键短按调遣、拖动平移\nS停止 · A攻击移动 · Ctrl+数字编队")
 	hp_player.value=maxf(0,s.player_lord.hp/s.player_lord.max_hp);hp_enemy.value=maxf(0,s.enemy_lord.hp/s.enemy_lord.max_hp)
 	phase_label.text="第%d幕 · %s %02d:%02d"%[s.wave,"倭袭" if s.night else "备战",int(s.phase_timer)/60,int(s.phase_timer)%60]
 	if s.training:phase_label.text="新手准备 · 敌袭未开始"
@@ -401,11 +438,20 @@ func refresh():
 	if is_instance_valid(save_status):save_status.text=game.save_notice
 	stock_label.text="铁 %d   油 %d   铳 %d   甲 %d   丁口 %d/%d"%[r.iron,r.oil,r.bows,r.armor,s.population(),r.maxPop]
 	build_controls.visible=game.selected_build!="" and screen=="play"
-	selected_label.text=(s.source.buildings[game.selected_build].name+" · %d°"%(game.build_rotation*90)) if game.selected_build!="" else ""
+	if is_instance_valid(confirm_build_button):
+		confirm_build_button.visible=game.controls.touch_mode
+		confirm_build_button.disabled=not game.touch_controls.build_ready or not game.placement_valid
+	if is_instance_valid(selection_controls):
+		selection_controls.visible=game.controls.touch_mode and game.controls.has_selection() and game.selected_build=="" and not tray.visible and popover_kind=="" and screen=="play"
+		_selected(selection_actions.attack,game.controls.attack_armed);_selected(selection_actions.queue,game.controls.queue_mode);_selected(selection_actions.box,game.controls.touch_box_select)
+	if is_instance_valid(touch_select_button):
+		touch_select_button.visible=game.controls.touch_mode and not game.controls.has_selection() and game.selected_build=="" and not tray.visible and popover_kind=="" and screen=="play"
+		_selected(touch_select_button,game.controls.touch_box_select)
+	selected_label.text=(game.short_name(game.selected_build) if game.compact else s.source.buildings[game.selected_build].name)+" · %d°"%(game.build_rotation*90) if game.selected_build!="" else ""
 	minimap.camera_target=game.camera_target;minimap.queue_redraw()
 	_caption(speed_button,"%d×"%int(s.speed))
 	_caption(command_button,"军令\n%s"%{"defend":"固守","sally":"迎击","attack":"进攻"}[s.stance])
-	_caption(sound_button,"音效：开启" if game.sound.enabled else "音效：关闭")
+	if is_instance_valid(sound_button):_caption(sound_button,"声音：开启" if game.sound.enabled else "声音：关闭")
 	repair_button.visible=s.structures.any(func(b):return not b.dead and b.team=="player" and b.type in game.GameSession.FORTS and b.hp<b.max_hp)
 	fire_button.visible=s.structures.any(func(b):return not b.dead and b.team=="player" and b.type=="pitch" and not s.fires.has(b.id))
 	_selected(clan_button,popover_kind=="clan");_selected(command_button,popover_kind=="command")

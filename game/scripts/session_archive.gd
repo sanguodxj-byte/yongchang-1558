@@ -11,6 +11,7 @@ static func capture(s) -> Dictionary:
 	for b in s.structures:
 		var item=b.duplicate(true);item.erase("model");data.structures.append(item)
 	data.units=s.units.duplicate(true)
+	data.civilians=s.civilians.duplicate(true)
 	for w in s.workers:
 		var item=w.duplicate(true);item.erase("home");item.home_id=w.home.id;data.workers.append(item)
 	for q in s.squads:
@@ -31,6 +32,12 @@ static func validate(data:Dictionary) -> String:
 		if not data[key] is Dictionary:return "存档内容损坏"
 	for key in ["structures","units","workers","squads","trips","projectiles","trees","pending"]:
 		if not data[key] is Array or data[key].size()>8192:return "存档实体数据损坏"
+	if data.has("civilians"):
+		if not data.civilians is Array or data.civilians.size()>24:return "存档乡民数据损坏"
+		for actor in data.civilians:
+			if not actor is Dictionary:return "存档乡民数据损坏"
+			for field in ["id","x","y","z","yaw","dead"]:
+				if not actor.has(field):return "存档乡民数据损坏"
 	var ids={};var buildings={};var units={};var squads={}
 	for key in ["structures","units","workers","squads","trips","trees"]:
 		for item in data[key]:
@@ -64,6 +71,7 @@ static func restore(source:Dictionary,data:Dictionary):
 		for key in ["wood","regrow"]:trees[item.id][key]=item[key]
 	for key in FIELDS:s.set(key,data[key].duplicate(true) if data[key] is Dictionary or data[key] is Array else data[key])
 	s.structures=data.structures.duplicate(true);s.units=data.units.duplicate(true);s.workers=data.workers.duplicate(true);s.squads=data.squads.duplicate(true);s.trips=data.trips.duplicate(true);s.projectiles=data.projectiles.duplicate(true)
+	s.civilians=data.get("civilians",[]).duplicate(true)
 	s.structure_index={};s.squad_index={};s.units_by_team={"player":[],"enemy":[]};s.structures_by_team={"player":[],"enemy":[]};s.occupied={}
 	var actors={}
 	for b in s.structures:

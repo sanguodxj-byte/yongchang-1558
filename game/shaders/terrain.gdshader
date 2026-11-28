@@ -10,11 +10,11 @@ void fragment(){
 	vec2 p=world_position.xz;
 	float grain=noise2(p*5.7),medium=noise2(p*1.37),broad=noise2(p*.35);
 	float fine=(grain-.5)*.12*detail;
-	float variation=(medium-.5)*.10+(broad-.5)*.07;
+	float variation=(medium-.5)*.16+(broad-.5)*.11;
 	vec3 c=COLOR.rgb*(1.0+fine+variation);
 	// Tiny, non-periodic mineral flecks and sparse dry grass patches. The falloff
 	// removes subpixel contrast as the camera pulls back, without changing lanes.
 	float fleck=smoothstep(.78,.9,grain)*detail*.07;
 	c=mix(c,c*vec3(1.16,1.07,.89),fleck);
-	ALBEDO=c;ROUGHNESS=.96;METALLIC=0.0;
+	ALBEDO=c;ROUGHNESS=.96;METALLIC=0.0;SPECULAR=.15;
 }

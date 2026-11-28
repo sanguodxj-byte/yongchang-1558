@@ -6,7 +6,7 @@ import psutil
 p=argparse.ArgumentParser();p.add_argument('--output',required=True);p.add_argument('--game',default='game');p.add_argument('--duration',type=float,default=20);p.add_argument('--deterministic',action='store_true');a=p.parse_args()
 root=Path(__file__).resolve().parent.parent;out=root/a.output;out.mkdir(parents=True,exist_ok=True);project=(root/a.game).resolve()
 env=os.environ.copy();env['APPDATA']=env['LOCALAPPDATA']=str(out/'profile');stop=threading.Event();load=[];child=None
-inputs=list((project/'scripts').glob('*.gd'))+[project/'tests/performance-benchmark.gd',project/'project.godot',project/'main.tscn',project/'assets/world.json',project/'assets/geometry.bin.z']
+inputs=list((project/'scripts').glob('*.gd'))+list((project/'shaders').glob('*.gdshader'))+[project/'tests/performance-benchmark.gd',project/'project.godot',project/'main.tscn',project/'assets/world.json',project/'assets/geometry.bin.z']
 hashes={str(p.relative_to(project)):hashlib.sha256(p.read_bytes()).hexdigest() for p in inputs}
 def monitor():
  psutil.cpu_percent()
@@ -36,6 +36,11 @@ finally:stop.set();t.join()
 log=(out/'run.log').read_text('utf-8',errors='replace');assert child.returncode==0 and 'SCRIPT ERROR:' not in log,log[-5000:]
 assert all(hashlib.sha256((project/p).read_bytes()).hexdigest()==h for p,h in hashes.items()),'Sources changed during benchmark'
 raw=json.loads((out/'raw.json').read_text('utf-8'));assert raw['passed'];summary=[]
+for scenario in raw['scenarios']:
+ expected='pause' if scenario['scenario']=='paused' else 'play'
+ assert scenario['initial']['state']==scenario['final']['state']==expected,'Scenario was interrupted: '+scenario['scenario']
+ elapsed=scenario['final']['time']-scenario['initial']['time']
+ assert (elapsed==0 if expected=='pause' else elapsed>=a.duration*.85),'Simulation did not advance for the timed window: '+scenario['scenario']
 for scenario in raw['scenarios']:
  data=np.asarray(scenario['rows'],dtype=float);columns=scenario['columns'];row={'scenario':scenario['scenario'],'frames':len(data),'staged':scenario['staged']}
  for name in ['interval_ms','simulation_ms','camera_ms','visuals_ms','hud_ms','script_ms','draw_calls','primitives','objects','static_bytes','nodes']:

@@ -40,21 +40,21 @@ class Landscape:
   self.spec=spec;self.w,self.d=spec['grid'];self.water=spec['waterLevel']
   self.roads=[(spline(r['points']),r['width']) for r in spec['roads']]
   self.canals=[(spline(r['points']),r['width']) for r in spec['canals']]
-  self.bridges=[b['rect'] for b in spec['bridges']]+[p['pier'] for p in spec['map']['ports'].values()]
+  self.bridges=[b['rect'] for b in spec['bridges']]
 
  def sample(self,x,z):
-  x,z=np.broadcast_arrays(np.asarray(x,dtype=float),np.asarray(z,dtype=float));n=noise(x*.075,z*.075,1558)
-  fine=noise(x*.4,z*.4,62)
+  x,z=np.broadcast_arrays(np.asarray(x,dtype=float),np.asarray(z,dtype=float))
+  n=noise(x*.065,z*.065,1558);fine=noise(x*.32,z*.32,62)
+  # Weathered connected ridges taper into an alluvial plain, not a row of props.
   mountain=np.zeros(x.shape)
   for m in self.spec['mountains']:
    cx,cz=m['center'];rx,rz=m['radii'];mountain+=((m['height']*np.exp(-(((x-cx)/rx)**2+((z-cz)/rz)**2)))**3)
-  mountain=np.power(mountain,1/3)*(1-smooth(22,33,x))
-  ridge=.77+noise(x*.17,z*.12,5)*.24+noise(x*.43,z*.29,9)*.055
-  # Nested erosion scales cut granite ridges, while the low plain stays quiet.
-  erosion=np.abs(np.sin(z*.27+x*.19+noise(x*.09,z*.12,14)*3))
-  h=.44+(n-.5)*.23+mountain*ridge-mountain*.07*erosion
-  h+=1.45*np.exp(-((x-70)/11)**2-((z-43)/8)**2)+.95*np.exp(-((x-63)/12)**2-((z-83)/8)**2)
-  # Low, broad weathered spurs interrupt the plain without closing the routes.
+  mountain=np.power(mountain,1/3)*(1-smooth(22,34,x))
+  ridge=.86+noise(x*.13,z*.10,5)*.14
+  valleys=np.abs(np.sin(z*.19+x*.14+noise(x*.07,z*.09,14)*2))
+  mountain*=ridge-valleys*.075
+  h=.43+(n-.5)*.15+mountain
+  h+=.85*np.exp(-((x-70)/13)**2-((z-43)/11)**2)+.55*np.exp(-((x-65)/15)**2-((z-81)/13)**2)
   coast=100+2.3*np.sin(z*.085)+1.5*np.sin(z*.19+.6)-7*np.exp(-((z-83)/8)**2)
   island_spec=self.spec['map']['island'];cx,cz=island_spec['terrainCenter'];rx,rz=island_spec['terrainRadii']
   dx=(x-cx)/rx;dz=(z-cz)/rz;angle=np.arctan2(dz,dx)
@@ -63,62 +63,76 @@ class Landscape:
   land_distance=np.maximum(coast-x,island_distance)
   island=x>self.spec['map']['seaBoundaryX']
   island_h=np.zeros(x.shape)
-  for ridge in island_spec['ridges']:
-   cx,cz=ridge['center'];rx,rz=ridge['radii'];island_h+=ridge['height']*np.exp(-((x-cx)/rx)**2-((z-cz)/rz)**2)
-  island_h=.5+island_h*(.88+noise(x*.3,z*.24,46)*.22)
+  for m in island_spec['ridges']:
+   cx,cz=m['center'];rx,rz=m['radii'];island_h+=m['height']*np.exp(-((x-cx)/rx)**2-((z-cz)/rz)**2)
+  # A broad natural saddle separates the north and south ridges around the fort.
+  saddle=1-.92*np.exp(-((x-island_spec['x'])/17)**4-((z-49)/13)**4)
+  island_h=.43+island_h*saddle*(.94+noise(x*.16,z*.16,46)*.08)
   h=np.where(island,island_h,h)
   road_distance=np.full(x.shape,100.0)
-  road_center=np.full(x.shape,100.0)
-  for line,width in self.roads:
-   dist=line_distance(x,z,line);road_center=np.minimum(road_center,dist);road_distance=np.minimum(road_distance,dist-width/2)
-  # Grade roads into the mountain toes, with feathered shoulders.
-  grade=.42+np.maximum(0,28-x)*.055
-  road_blend=1-smooth(0,3.8,road_distance)
-  h=h*(1-road_blend)+np.minimum(h,grade)*road_blend
-  # Initial settlement, harbour and resource work yards have actual flat support.
-  island_x=island_spec['x']
-  pads=[([39,36,52,57],.4,4),([island_x-10,37,island_x+10,61],.4,4),([17,36,26,46],.65,3.5),([18,59,27,68],.65,3.5),([78,62,85,69],.4,2.5)]
-  for rect,y,feather in pads:
-   t=1-smooth(0,feather,rect_distance(x,z,rect));h=h*(1-t)+y*t
+  for line,width in self.roads:road_distance=np.minimum(road_distance,line_distance(x,z,line)-width/2)
+  # Only crossing approaches may be graded: a short transition joins actual
+  # wooden bridge ends. Resource yards and route corridors never flatten land.
+  bridge_influence=np.zeros(x.shape)
   for rect in self.bridges:
-   t=1-smooth(0,3,rect_distance(x,z,[rect[0]-1,rect[1]-1,rect[2]+1,rect[3]+1]));h=h*(1-t)+.4*t
-  # Uneven fields follow the irrigation network; ridges remain small enough for work.
-  field=np.zeros(x.shape);field_edge=np.full(x.shape,100.0);field_rows=np.zeros(x.shape)
-  for i,f in enumerate(self.spec['fields']):
-   mask=polygon(x,z,f['points']);edge=line_distance(x,z,np.asarray(f['points']+f['points'][:1],dtype=float))
-   field=np.where(mask,(i+1),field);field_edge=np.minimum(field_edge,edge)
-   a=f['angle'];row=np.abs(np.sin((x*np.cos(a)+z*np.sin(a))*3.8))
-   field_rows=np.where(mask,row,field_rows)
-  field_mask=field>0
-  h+=np.where(field_mask,(field_rows-.5)*.035+np.exp(-field_edge**2/.12)*.12,0)
-  # Shore, estuary and two engineered village canals use a continuous height field.
+   t=1-smooth(0,1.1,rect_distance(x,z,[rect[0]-.35,rect[1],rect[2]+.35,rect[3]]))
+   h=h*(1-t)+.4*t
+   bridge_influence=np.maximum(bridge_influence,t)
+  field=np.zeros(x.shape)
+  for i,f in enumerate(self.spec['fields']):field=np.where(polygon(x,z,f['points']),i+1,field)
   sea_blend=1-smooth(-1.5,2.8,land_distance)
-  seabed=self.water-.35+np.minimum(land_distance,0)*.18
+  seabed=self.water-.35+np.minimum(land_distance,0)*.14
   h=h*(1-sea_blend)+seabed*sea_blend
   canal_distance=np.full(x.shape,100.0)
-  for line,width in self.canals:canal_distance=np.minimum(canal_distance,line_distance(x,z,line)-width/2)
-  bank=1-smooth(-.32,.84,canal_distance)
-  h=h*(1-bank)+np.minimum(h,self.water-.55)*bank
+  for line,width in self.canals:
+   half=width*.5*(.93+noise(x*.11,z*.11,19)*.14)
+   dist=line_distance(x,z,line)-half
+   canal_distance=np.minimum(canal_distance,dist)
+  # The two lowland tidal branches join the same estuary. No sea-level trench
+  # is carved across the mountains; both beds stay in the alluvial lowland.
+  bank_width=self.spec.get('naturalTerrain',{}).get('bankWidth',1.8)
+  bank_width=bank_width*(1-bridge_influence)+.82*bridge_influence
+  bank_shape=smooth(0,bank_width,canal_distance)
+  dry_bank=self.water+(h-self.water)*bank_shape
+  bed=self.water-self.spec.get('naturalTerrain',{}).get('tidalDepth',.32)*smooth(0,.5,-canal_distance)
+  channel=np.where(canal_distance<0,bed,dry_bank)
+  h=np.minimum(h,channel)
+  # The deck is a real solid above the bank. Lower only soil below its interior
+  # so terrain cannot share the plank top plane or show through the timber.
+  for x0,z0,x1,z1 in self.bridges:
+   inset=smooth(x0,x0+.35,x)*(1-smooth(x1-.35,x1,x))*smooth(z0-.25,z0,z)*(1-smooth(z1,z1+.25,z))
+   h=np.where(inset>0,np.minimum(h,.4-inset*.22),h)
   water=h<self.water
   forest=np.zeros(x.shape)
   for f in self.spec['forests']:
    cx,cz=f['center'];rx,rz=f['radii'];r=((x-cx)/rx)**2+((z-cz)/rz)**2
-   forest=np.maximum(forest,(1-smooth(.35,1.3,r+(noise(x*.22,z*.22,22)-.5)*.35))*f['density'])
-  # Natural grass/soil modulation is broad; individual triangles are not randomly tinted.
-  grass=np.stack([.075+n*.045,.125+n*.065,.038+n*.035],axis=-1)
-  grass*=np.expand_dims(.94+fine*.08-forest*.18,-1)
-  dirt=np.stack([.21+n*.075,.145+n*.06,.074+n*.045],axis=-1)
-  rock=np.stack([.155+n*.065,.17+n*.06,.155+n*.055],axis=-1)
-  ragged=(fine-.5)*.25
-  mix=(1-smooth(-.3,.8,road_distance+ragged))[...,None]
-  rut=np.exp(-((road_center-.55)/.12)**2)*(1-smooth(.9,1.2,road_center))
-  dirt*=1-rut[...,None]*.065
-  color=grass*(1-mix)+dirt*mix
-  field_col=np.stack([.125+n*.06,.155+n*.065,.058+n*.04],axis=-1)*(1-field_rows[...,None]*.10)
-  color=np.where(field_mask[...,None],color*.2+field_col*.8,color)
-  bund=(1-smooth(.12,.4,field_edge))*(1-smooth(-.3,.5,road_distance)*.6)
-  color=color*(1-bund[...,None]*.38)+dirt*bund[...,None]*.38
-  wet=1-smooth(0,5.5,land_distance)
-  mud=np.stack([.155+n*.065,.155+n*.06,.11+n*.055],axis=-1)
+   forest=np.maximum(forest,(1-smooth(.35,1.35,r+(noise(x*.18,z*.18,22)-.5)*.48))*f['density'])
+  # Continuous woodland belongs to the landform, not just isolated oval groves.
+  # Exposed granite, tidal salt margins and village clearings remain open.
+  woodland=noise(x*.075,z*.075,313);gaps=noise(x*.14,z*.11,79)
+  western=(1-smooth(25,36,x))*(.68+woodland*.26)*(1-smooth(9,14,h)*.45)
+  plain=smooth(55,63,x)*(1-smooth(87,97,x))*(.16+smooth(.25,.66,woodland)*.64)
+  riparian=(1-smooth(2.4,6.5,canal_distance))*(.25+gaps*.33)
+  island_woodland=island*(.42+woodland*.40)
+  forest=np.maximum(forest,np.maximum(np.maximum(western,plain),np.maximum(riparian,island_woodland)))
+  forest*=.55+smooth(.13,.46,gaps)*.45
+  forest*=smooth(.8,3.2,land_distance)*smooth(.7,1.65,canal_distance)
+  # Wetness follows actual elevation above connected water, not a fixed-width
+  # band around every coast. Mud, sand and rock belong to the terrain surface.
+  wet_height=self.water+.30
+  wet=(1-smooth(self.water+.025,wet_height,h))*(1-smooth(2,7,land_distance))
+  shore=1-smooth(-.15,2.4,land_distance)
+  riverbank=(1-smooth(.02,1.65,canal_distance))*(1-shore)
+  grass=np.stack([.085+n*.05,.135+n*.07,.055+n*.04],axis=-1)
+  grass*=np.expand_dims(.96+fine*.06-forest*.13,-1)
+  geology=self.spec['geology']
+  bedrock=np.asarray(geology['bedrockColor']);weathered=np.asarray(geology['weatheredColor'])
+  weather=noise(x*.22,z*.18,331)*.32
+  rock=(bedrock*(1-weather[...,None])+weathered*weather[...,None])*(.91+n[...,None]*.16)
+  soil=np.stack([.20+n*.045,.153+n*.045,.092+n*.04],axis=-1)
+  sand=np.stack([.32+n*.05,.285+n*.045,.185+n*.045],axis=-1)
+  mud=np.stack([.12+n*.035,.13+n*.035,.083+n*.025],axis=-1)
+  color=grass*(1-riverbank[...,None])+soil*riverbank[...,None]
+  color=color*(1-shore[...,None])+sand*shore[...,None]
   color=color*(1-wet[...,None])+mud*wet[...,None]
-  return {'height':h,'color':color,'rock':rock,'water':water,'coast':land_distance,'canal':canal_distance,'road':road_distance,'field':field,'forest':forest,'island':island}
+  return {'height':h,'color':color,'rock':rock,'water':water,'wet':wet,'coast':land_distance,'canal':canal_distance,'road':road_distance,'field':field,'forest':forest,'island':island}

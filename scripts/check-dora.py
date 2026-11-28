@@ -1,9 +1,9 @@
 """Run the packaged game inside Dora, send native bridge input, read live state."""
 import argparse,json,subprocess,hashlib
 from pathlib import Path
-p=argparse.ArgumentParser();p.add_argument('--runtime',default=r'D:\123\Dora.exe');p.add_argument('--output',required=True)
+p=argparse.ArgumentParser();p.add_argument('--runtime',default=r'D:\123\Dora.exe');p.add_argument('--output',required=True);p.add_argument('--project',default='dist/dora')
 a=p.parse_args();root=Path(__file__).resolve().parent.parent;out=Path(a.output).resolve();out.mkdir(parents=True,exist_ok=True)
-exe=Path(a.runtime).resolve();project=root/'dist/dora'
+exe=Path(a.runtime).resolve();project=(root/a.project).resolve()
 (out/'dora-report.json').write_text(json.dumps({'passed':False,'status':'running','pckSha256':hashlib.sha256((project/'game.pck').read_bytes()).hexdigest()}),encoding='utf-8')
 def cli(args,timeout=55):
  r=subprocess.run([str(exe),'cli',*args],cwd=exe.parent,capture_output=True,timeout=timeout)
@@ -87,6 +87,27 @@ D.Director:endGameCapture()
 print("DORA_REPORT "..D.json.encode(report))
 '''
 code=code.replace('CAPTURE_PATH',json.dumps((out/'dora-play.png').as_posix()))
+# Observe and operate the same sound controls as H5; keep the engine output
+# meter distinct from a human listening review.
+code=code.replace('"script:audit_state","script:audit_screen"', '"script:audit_audio_json","script:audit_ui_json","script:audit_state","script:audit_screen"')
+audio_check=r'''
+D.sleep(4)
+local score=D.json.decode(state().audit_audio_json)
+check("native battle music",score.music=="battle" and score.musicPlaying,score)
+local pause=D.json.decode(state().audit_ui_json)["暂停"];assert(pause,"Pause control missing");click(pause.x+pause.width/2,pause.y+pause.height/2)
+check("native pause sound menu",state().audit_state=="pause")
+local function sound_button()
+ local r=D.json.decode(state().audit_ui_json)["声音 开 / 关"];assert(r,"Sound control missing");click(r.x+r.width/2,r.y+r.height/2)
+end
+sound_button();D.sleep(3)
+local muted=D.json.decode(state().audit_audio_json)
+check("native sound mute",not muted.enabled and muted.voices==0 and muted.musicDb<=-79,muted)
+sound_button();D.sleep(3)
+local restored=D.json.decode(state().audit_audio_json)
+check("native score preserved across pause and mute",restored.enabled and restored.musicPlaying and restored.music=="battle" and restored.musicDb>=-30,restored)
+key("Escape")
+'''
+code=code.replace('report.final=state();report.passed=true',audio_check+'\nreport.final=state();report.passed=true')
 request=root/'.build/dora-check-request.json';request.write_text(json.dumps({'mode':'lua','code':code,'timeoutSeconds':120}),encoding='utf-8')
 text=cli(['agent','command','-p',str(project),'--input',str(request),'--timeout','135'],145)
 (out/'dora-command.json').write_text(text,encoding='utf-8')

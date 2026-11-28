@@ -1,11 +1,13 @@
 extends RefCounted
 const TerrainSurface=preload("res://scripts/terrain_surface.gd")
 const UnitSeparation=preload("res://scripts/unit_separation.gd")
+const IdleCrowd=preload("res://scripts/idle_crowd.gd")
+const CanalDefenses=preload("res://scripts/canal_defenses.gd")
 var terrain
 
 signal changed(kind: String, payload: Variant)
 const PRODUCERS = ["farm","woodcutter","quarry","ironMine","pitchRig","fletcher","blacksmith"]
-const FORTS = ["wall","gate","tower","ballista"]
+const FORTS = ["wall","gate","waterGate","tower","ballista"]
 const RESOURCE_NAMES={"wood":"木材","stone":"条石","food":"粮食","gold":"银两","iron":"铁料","oil":"火油","bows":"鸟铳","armor":"甲胄"}
 const WAVES = [
 	[{"role":"spearman"},{"role":"spearman"},{"role":"archer"}],
@@ -21,6 +23,7 @@ var units: Array = []
 var units_by_team={"player":[],"enemy":[]}
 var structures_by_team={"player":[],"enemy":[]}
 var workers: Array = []
+var civilians: Array = []
 var squads: Array = []
 var squad_index={}
 var structure_index={}
@@ -57,7 +60,12 @@ var player_keep: Dictionary
 var enemy_keep: Dictionary
 
 func _init(data: Dictionary):
-	source = data
+	# Native construction additions leave the terrain identity (and existing saves) intact.
+	source = data.duplicate()
+	source.buildings={}
+	for key in data.buildings:
+		source.buildings[key]=data.buildings[key].duplicate(true)
+		if key=="gate":source.buildings.waterGate=CanalDefenses.BUILDING.duplicate(true)
 	map = data.map
 	terrain=TerrainSurface.new(data)
 	res = data.initial_resources.duplicate(true)
@@ -80,9 +88,14 @@ func _init(data: Dictionary):
 		var tower = occupied.get(Vector2i(xy[0],xy[1]))
 		if tower:
 			for i in squad.members.size():
-				var u = squad.members[i];u.garrison=tower.id;u.slot=Vector3((i%2-.5)*.36,0,(floori(i/2.0)-.5)*.36)
+				var u = squad.members[i];u.garrison=tower.id;u.slot=garrison_slot(tower,i)
 	for guard_spec in map.enemyGuards:
 		create_squad(guard_spec.role,"enemy",world(guard_spec.cell),true).guard = true
+	IdleCrowd.sync(self)
+
+func garrison_slot(building:Dictionary,index:int) -> Vector3:
+	# The four timber posts occupy the corners; stand between them.
+	return Vector3(cos(index*PI/2),0,sin(index*PI/2))*.38 if building.type=="tower" else Vector3.ZERO
 
 func next_id() -> int:
 	ids += 1
@@ -125,9 +138,11 @@ func _rebuild_grids():
 			if tr.wood>0:nav.set_point_solid(Vector2i(tr.gx,tr.gz),true)
 		for d in source.deposits:nav.set_point_solid(Vector2i(d.gx,d.gz),true)
 		for s in structures:
-			if s.dead or s.type in ["stockpile","campfire"]:continue
+			if s.dead or s.type in ["stockpile","campfire","pitch"]:continue
 			for xy in s.cells:
 				var p=Vector2i(xy[0],xy[1])
+				# A breach can reopen a bank, but never turn the channel into a land bridge.
+				if not cell(p).get("walkable",cell(p).ground!="water"):continue
 				if s.type=="gate" and (s.team==team or (team=="worker" and s.team=="player")):
 					nav.set_point_solid(p,false)
 				elif team!="worker" and s.team!=team:
@@ -144,7 +159,9 @@ func apron(target: Vector3, team="worker") -> Vector3:
 			for dz in range(-radius,radius+1):
 				if maxi(absi(dx),absi(dz))!=radius:continue
 				var p=center+Vector2i(dx,dz)
-				if nav.is_in_boundsv(p) and not nav.is_point_solid(p):return world([p.x,p.y])
+				if nav.is_in_boundsv(p) and not nav.is_point_solid(p):
+					if radius==0:return Vector3(target.x,elevation(target),target.z)
+					return world([p.x,p.y])
 	return target
 
 func route(from: Vector3, to: Vector3, team: String) -> PackedVector3Array:
@@ -157,24 +174,41 @@ func route(from: Vector3, to: Vector3, team: String) -> PackedVector3Array:
 
 func move(u: Dictionary, goal: Vector3, dt: float, team: String, stop=.35) -> bool:
 	var p=pos(u)
+	var origin_building=occupied.get(grid(p),{})
+	if not origin_building.is_empty() and origin_building.team==u.get("team","player") and origin_building.type not in ["stockpile","campfire","gate","pitch"]:
+		p=apron(p,team);u.x=p.x;u.y=p.y;u.z=p.z;u.path_version=-1
 	if Vector2(p.x-goal.x,p.z-goal.z).length()<stop:return true
+	var remaining=Vector2(p.x-goal.x,p.z-goal.z).length()
+	if time-float(u.get("progress_at",-2))>1.0:
+		if remaining>float(u.get("progress_distance",INF))-.20:u.path_version=-1
+		u.progress_at=time;u.progress_distance=remaining
 	if u.get("path_version",-1)!=version or u.get("goal",Vector3.INF).distance_to(goal)>.7 or u.get("path",[]).is_empty():
-		u.path=route(p,goal,team);u.path_index=0;u.path_version=version;u.goal=goal
+		u.path=route(p,goal,team);u.path_index=mini(1,u.path.size()-1);u.path_version=version;u.goal=goal
 	var path: PackedVector3Array=u.path
 	if path.is_empty():return false
+	# A collision can move an actor beyond a waypoint. Continue along the nearest
+	# reachable forward point instead of turning back into the crowd.
+	for ahead in range(u.path_index+1,mini(path.size(),u.path_index+4)):
+		if p.distance_to(path[ahead])<p.distance_to(path[u.path_index]) and UnitSeparation.can_stand(self,u,p.lerp(path[ahead],.5)):
+			u.path_index=ahead
 	while u.path_index<path.size()-1 and Vector2(p.x-path[u.path_index].x,p.z-path[u.path_index].z).length()<.48:u.path_index+=1
-	var target:Vector3=path[u.path_index]
+	var target:Vector3=goal if u.path_index==path.size()-1 and grid(goal)==grid(path[-1]) else path[u.path_index]
 	var dir=target-p;dir.y=0
 	if dir.length()<.15:return Vector2(p.x-goal.x,p.z-goal.z).length()<stop+1
 	dir=dir.normalized()
 	var next=p+dir*minf(float(u.speed)*dt,Vector2(p.x-target.x,p.z-target.z).length())
 	var blocking=occupied.get(grid(next))
-	if blocking and not blocking.dead and blocking.team!=u.get("team","player") and not blocking.type in ["campfire","stockpile"]:
+	if blocking and not blocking.dead and blocking.team!=u.get("team","player") and not blocking.type in ["campfire","stockpile","pitch"]:
 		if team!="worker":strike_structure(u,blocking)
 		return false
 	var next_cell=cell(grid(next))
 	if not next_cell.get("walkable",next_cell.get("ground","water")!="water"):u.path_version=-1;return false
-	u.x=next.x;u.z=next.z;u.y=elevation(next);u.yaw=atan2(dir.x,dir.z);u.moving=true
+	next=UnitSeparation.steer(self,u,p,next,dt)
+	var moved=Vector2(next.x-p.x,next.z-p.z).length()
+	if moved<.0001:return false
+	u.x=next.x;u.z=next.z;u.y=elevation(next);u.yaw=atan2(next.x-p.x,next.z-p.z);u.moving=true
+	u.motion_distance=float(u.get("motion_distance",0.0))+moved
+	u.move_intent=next-p
 	u.phase=u.get("phase",0.0)+dt*float(u.speed)*3.7
 	return false
 
@@ -211,16 +245,43 @@ func pay(cost: Dictionary):
 	for key in cost:res[key]-=cost[key]
 
 func footprint(kind:String,p:Vector2i,rotation:int=0) -> Array:
+	if kind=="waterGate":return CanalDefenses.layout(self,p,rotation).cells
 	var dimensions=source.buildings.get(kind,{}).get("footprint",[1,2] if kind=="gate" else [1,1])
 	var width=int(dimensions[rotation%2]);var depth=int(dimensions[1-rotation%2]);var cells=[]
 	for x in width:
 		for z in depth:cells.append(p+Vector2i(x,z))
 	return cells
 
+func placement_cell_error(kind:String,p:Vector2i) -> String:
+	var c=cell(p)
+	if c.is_empty():return "超出地图范围"
+	if c.ground=="water" and kind!="waterGate":return "水面：跨渠城防请选水门" if kind in FORTS else "水面：请在陆地营造"
+	if c.get("bridge",false):return "木桥：保持通行"
+	if c.get("obstacle","")=="marsh":return "芦苇湿地：地基不稳"
+	var bank_foundation=kind in ["wall","gate"] and CanalDefenses.shallow_bank(self,p)
+	if kind=="gate" and bank_foundation and not c.get("walkable",false):return "城门通道需要可行走的岸地"
+	if c.get("obstacle","")=="bank" and not bank_foundation and kind!="waterGate":return "占地跨入水岸：此处仅适合城防基础"
+	if not c.get("buildable",true) and not bank_foundation and kind!="waterGate":return "陡坡：请在平缓地面营造"
+	var old=occupied.get(p)
+	if old and not (kind in ["gate","waterGate"] and old.type=="wall" and old.team=="player"):return "已有建筑占地"
+	for tr in trees:
+		if tr.wood>0 and Vector2i(tr.gx,tr.gz)==p:return "树木占地：先伐木清理"
+	for d in source.deposits:
+		if Vector2i(d.gx,d.gz)==p:return "矿藏占地：请在旁边营造"
+	return ""
+
+func foundation(cells:Array) -> Vector2:
+	var lowest=INF;var highest=-INF
+	for xy in cells:
+		var center=world([xy.x,xy.y])
+		for dx in [-.5,0,.5]:
+			for dz in [-.5,0,.5]:
+				var height=terrain.height_at(center+Vector3(dx,0,dz))
+				lowest=minf(lowest,height);highest=maxf(highest,height)
+	return Vector2(lowest,highest)
+
 func placement_error(kind:String,p:Vector2i,rotation:int=0) -> String:
 	if not source.buildings.has(kind):return "未知建筑"
-	var c=cell(p)
-	if c.is_empty() or c.ground=="water" or c.get("bridge",false) or c.biome=="cliff" or p.x<2 or p.x>map.buildLimitX:return "此处不能营造"
 	if kind=="demolish":
 		var target=occupied.get(p,{})
 		if target.is_empty():return "这里没有建筑"
@@ -228,30 +289,20 @@ func placement_error(kind:String,p:Vector2i,rotation:int=0) -> String:
 		if target.get("initial",false):return "开局建筑不可拆除"
 		return ""
 	var spec=source.buildings[kind]
-	if not c.get("buildable",true):return "此处坡度或岸地不适合营造"
-	if not affordable(spec.cost):return "物资不足："+missing_resources(spec.cost)
+	if kind=="waterGate":
+		var crossing=CanalDefenses.layout(self,p,rotation)
+		if crossing.error!="":return crossing.error
 	var cells=footprint(kind,p,rotation)
-	var lowest=INF;var highest=-INF
 	for xy in cells:
-		var cc=cell(xy);var old=occupied.get(xy)
-		if xy.x>map.buildLimitX or cc.is_empty() or cc.ground=="water" or cc.get("bridge",false) or not cc.get("buildable",true):return "占地、障碍或高差不允许营造"
-		var center=world([xy.x,xy.y])
-		for dx in [-.5,0,.5]:
-			for dz in [-.5,0,.5]:
-				var height=terrain.height_at(center+Vector3(dx,0,dz))
-				lowest=minf(lowest,height);highest=maxf(highest,height)
-		if highest-lowest>float(source.get("terrain",{}).get("maxBuildRelief",.28)):return "占地、障碍或高差不允许营造"
-		if old and not (kind=="gate" and old.type=="wall" and old.team=="player"):return "占地、障碍或高差不允许营造"
-		for tr in trees:
-			if tr.wood>0 and Vector2i(tr.gx,tr.gz)==xy:return "占地、障碍或高差不允许营造"
-		for d in source.deposits:
-			if Vector2i(d.gx,d.gz)==xy:return "占地、障碍或高差不允许营造"
+		var error=placement_cell_error(kind,xy)
+		if error!="":return error
 	if spec.has("reqBiome"):
 		var near=false
 		for dx in range(-2,3):
 			for dz in range(-2,3):
 				if cell(p+Vector2i(dx,dz)).get("biome","")==spec.reqBiome:near=true
 		if not near:return "请靠近相应矿藏营造"
+	if not affordable(spec.cost):return "物资不足："+missing_resources(spec.cost)
 	return ""
 
 func build(kind: String, p: Vector2i, rotation=0) -> bool:
@@ -268,10 +319,11 @@ func build(kind: String, p: Vector2i, rotation=0) -> bool:
 	pay(spec.cost)
 	for xy in cells:
 		if occupied.has(xy):destroy(occupied[xy],false)
-	var at=(world([p.x,p.y])+world([cells[-1].x,cells[-1].y]))/2
+	var at=(world([cells[0].x,cells[0].y])+world([cells[-1].x,cells[-1].y]))/2
+	var support=foundation(cells);at.y=support.y
 	var s={"id":next_id(),"type":kind,"label":spec.name,"team":"player","x":at.x,"y":at.y,"z":at.z,
 		"gx":p.x,"gz":p.y,"hp":float(spec.hp),"max_hp":float(spec.hp),"height":spec.height,"dead":false,"timer":0.0,"worker":false,"rotation":rotation,
-		"cells":cells.map(func(v):return [v.x,v.y]),"half":{"hx":(cells[-1].x-p.x+1)*.5-.01,"hz":(cells[-1].y-p.y+1)*.5-.01}}
+		"foundation_bottom":support.x,"cells":cells.map(func(v):return [v.x,v.y]),"half":{"hx":(cells[-1].x-cells[0].x+1)*.5-.01,"hz":(cells[-1].y-cells[0].y+1)*.5-.01}}
 	structures.append(s);structure_index[s.id]=s;structures_by_team[s.team].append(s)
 	for xy in cells:occupied[xy]=s
 	if kind=="hovel":res.maxPop+=8
@@ -292,6 +344,16 @@ func spawn_unit(role: String, team: String, at: Vector3) -> Dictionary:
 	var u=spec.duplicate(true)
 	u.merge({"id":next_id(),"role":role,"team":team,"x":at.x,"y":elevation(at),"z":at.z,"max_hp":spec.hp,"hp":float(spec.hp),"timer":0.0,
 		"phase":0.0,"yaw":0.0,"moving":false,"transit":false,"garrison":0,"slot":Vector3.ZERO,"order":Vector3.INF,"squad":0,"dead":false,"swing":0.0},true)
+	var spawn=at
+	for ring in range(10):
+		var found=false
+		for direction in (1 if ring==0 else 16):
+			var candidate=at+Vector3(cos(direction*TAU/16),0,sin(direction*TAU/16))*ring*.65
+			if not UnitSeparation.can_stand(self,u,candidate):continue
+			if (units+workers+civilians).any(func(other):return not other.dead and not other.get("transit",false) and not other.get("garrison",0) and Vector2(other.x-candidate.x,other.z-candidate.z).length()<UnitSeparation.radius(u)+UnitSeparation.radius(other)+.04):continue
+			spawn=candidate;found=true;break
+		if found:break
+	u.x=spawn.x;u.z=spawn.z;u.y=elevation(spawn)
 	units.append(u);units_by_team[team].append(u);changed.emit("spawn",u);return u
 
 func population() -> int:
@@ -309,29 +371,88 @@ func create_squad(role: String, team: String, at: Vector3, free=false) -> Dictio
 	var sq={"id":next_id(),"role":role,"team":team,"members":[],"order":Vector3.INF,"anchor":at,"guard":false}
 	for i in int(spec.count):
 		var spot=apron(at+Vector3((i%2)*.7,0,floori(i/2.0)*.7),team)
-		var u=spawn_unit(role,team,spot);u.squad=sq.id;sq.members.append(u)
+		var u=spawn_unit(role,team,spot);u.squad=sq.id;u.formation_slot=Vector3((i%2-.5)*.8,0,(floori(i/2.0)-.5)*.8);sq.members.append(u)
 	squads.append(sq);squad_index[sq.id]=sq;return sq
 
-func command_squad(sq: Dictionary, target: Vector3):
-	sq.order=target
-	for u in sq.members:u.garrison=0;u.path_version=-1
+func _command(target:Vector3,attack_move:bool) -> Dictionary:
+	var enemy=occupied.get(grid(target),{})
+	if enemy.is_empty() or enemy.team=="player":
+		enemy={}
+		for u in units_by_team.enemy:
+			if not u.dead and not u.transit and pos(u).distance_to(target)<1.2:enemy=u;break
+	return {"target":target,"attack":attack_move or not enemy.is_empty(),"target_id":enemy.get("id",0),"structure":enemy.has("cells")}
+
+func command_squad(sq: Dictionary, target: Vector3,queued=false,attack_move=false):
+	var command=_command(target,attack_move)
+	if queued and sq.order!=Vector3.INF:
+		if not sq.has("queue"):sq.queue=[]
+		sq.queue.append(command);return
+	sq.queue=[];_apply_squad_command(sq,command)
+
+func _apply_squad_command(sq:Dictionary,command:Dictionary):
+	sq.order=command.target;sq.attack_move=command.attack;sq.target_id=command.target_id;sq.target_structure=command.structure;sq.manual_hold=false
+	var alive=sq.members.filter(func(u):return not u.dead)
+	for i in alive.size():
+		var u=alive[i];u.garrison=0;u.path_version=-1;u.order=Vector3.INF;u.erase("pending_garrison");u.formation_ready=false
+		u.command_slot=Vector3((i%4-minf(alive.size()-1,3)*.5)*.7,0,(floori(i/4.0)-floori((alive.size()-1)/4.0)*.5)*.7)
 	if sq.role=="archer":
-		var walls=structures.filter(func(s):return not s.dead and s.team==sq.team and s.type in ["tower","wall"] and pos(s).distance_to(target)<2.5)
+		var walls=structures.filter(func(s):return not s.dead and s.team==sq.team and s.type in ["tower","wall"] and pos(s).distance_to(command.target)<2.5)
 		var i=0
 		for wall in walls:
 			var capacity=4 if wall.type=="tower" else 1
 			for slot in capacity:
 				if i>=sq.members.size():return
-				sq.members[i].pending_garrison=wall.id;sq.members[i].slot=Vector3((slot%2-.5)*.36,0,(floori(slot/2.0)-.5)*.36);i+=1
+				var offset=garrison_slot(wall,slot)
+				if units.any(func(u):return not u.dead and (u.get("garrison",0)==wall.id or u.get("pending_garrison",0)==wall.id) and u.slot.distance_to(offset)<.5):continue
+				sq.members[i].pending_garrison=wall.id;sq.members[i].slot=offset;i+=1
+
+func stop_squad(sq:Dictionary):
+	sq.queue=[];sq.order=Vector3.INF;sq.target_id=0;sq.manual_hold=true;sq.erase("port")
+	var center=Vector3.ZERO;var count=0
+	for u in sq.members:
+		if u.dead:continue
+		center+=pos(u);count+=1;u.order=Vector3.INF;u.path_version=-1;u.moving=false;u.erase("pending_garrison")
+	if count:sq.anchor=center/count
+
+func command_lord(target:Vector3,queued=false,attack_move=false):
+	if queued and player_lord.order!=Vector3.INF:
+		if not player_lord.has("queue"):player_lord.queue=[]
+		player_lord.queue.append(_command(target,attack_move));return
+	player_lord.queue=[];_apply_lord_command(_command(target,attack_move))
+
+func _apply_lord_command(command:Dictionary):
+	player_lord.garrison=0;player_lord.erase("enter");player_lord.path_version=-1;player_lord.manual_hold=false
+	player_lord.order=command.target;player_lord.attack_move=command.attack
+	player_lord.target_id=command.target_id;player_lord.target_structure=command.structure
+	var building=occupied.get(grid(command.target),{})
+	if not building.is_empty() and building.team=="player":player_lord.order=apron(pos(building),"player");player_lord.enter=building.id
+
+func stop_lord():
+	player_lord.order=Vector3.INF;player_lord.queue=[];player_lord.manual_hold=true;player_lord.target_id=0;player_lord.moving=false;player_lord.path_version=-1;player_lord.erase("enter");player_lord.erase("port")
+
+func _advance_commands():
+	for sq in squads:
+		if sq.team!="player" or sq.order==Vector3.INF:continue
+		var alive=sq.members.filter(func(u):return not u.dead)
+		if sq.get("target_id",0):continue
+		if alive.is_empty() or alive.any(func(u):return u.transit or not u.garrison and pos(u).distance_to(apron(sq.order+u.get("command_slot",Vector3.ZERO),u.team))>1.1):continue
+		if not sq.get("queue",[]).is_empty():_apply_squad_command(sq,sq.queue.pop_front())
+		else:sq.anchor=sq.order;sq.order=Vector3.INF;sq.manual_hold=true
+	if not player_lord.dead and player_lord.order==Vector3.INF and not player_lord.get("queue",[]).is_empty():_apply_lord_command(player_lord.queue.pop_front())
 
 func set_stance(value: String):
 	stance=value
 	for sq in squads:
-		if sq.team=="player":sq.order=Vector3.INF
+		if sq.team=="player":sq.order=Vector3.INF;sq.queue=[];sq.manual_hold=false;sq.target_id=0
 	message({"attack":"远海反攻：备足冲车、炮车与护卫，突破双重寨门","defend":"固守当前阵地","sally":"出击驱逐来寇"}[value])
 
 func step(dt: float):
 	if state!="play":return
+	IdleCrowd.sync(self)
+	UnitSeparation.begin(self,units+workers+civilians)
+	for actor in units+workers+civilians:
+		actor.render_from=pos(actor);actor.render_motion_from=float(actor.get("motion_distance",0.0));actor.move_intent=Vector3.ZERO
+	for trip in trips:trip.render_from=trip.position;trip.render_yaw_from=trip.yaw
 	time+=dt;phase_timer-=0.0 if training else dt;econ_timer-=dt;recruit_timer-=dt
 	if phase_timer<=0:
 		if night:night=false;wave+=1;phase_timer=70;martial_bonus=true;message("海日破晓：整备粮械，准备反攻")
@@ -344,11 +465,11 @@ func step(dt: float):
 	if recruit_timer<=0:
 		recruit_timer={"balanced":5.0,"harsh":8.2,"generous":3.2}[policy]
 		if res.peasants<12 and population()<res.maxPop and res.food>=2:res.peasants+=1
-	_workers(dt);_transport(dt);_combat(dt);_fire(dt)
+	_workers(dt);_transport(dt);_combat(dt);_advance_commands();_fire(dt)
 	for tr in trees:
 		if tr.wood<=0:
 			tr.regrow-=dt
-			if tr.regrow<=0:tr.wood=40;_rebuild_grids();changed.emit("tree",tr)
+			if tr.regrow<=0 and not occupied.has(Vector2i(tr.gx,tr.gz)):tr.wood=40;_rebuild_grids();changed.emit("tree",tr)
 
 func trigger_wave():
 	night=true;phase_timer=36
@@ -517,17 +638,19 @@ func _transport(dt: float):
 		if enemy_keep.dead:continue
 		var sq=create_squad(order.role,"enemy",world(map.ports.island.rally),true)
 		launch(sq.members,"enemy",true,order.get("north",false))
+	var invasion_ready=_invasion_assembled() if stance=="attack" else true
 	for sq in squads:
 		if sq.team!="player":continue
 		var alive=sq.members.filter(func(u):return not u.dead and not u.garrison)
 		if alive.is_empty() or alive.any(func(u):return u.transit):continue
+		if sq.get("manual_hold",false) and sq.order==Vector3.INF:sq.erase("port");continue
 		var from_island=on_island(pos(alive[0]))
 		var want_island=on_island(sq.order) if sq.order!=Vector3.INF else stance=="attack"
 		if from_island==want_island:sq.erase("port");continue
 		var side="island" if from_island else "mainland"
 		var rally=world(map.ports[side].rally);sq.port=rally
-		var assembling=stance=="attack" and sq.order==Vector3.INF and not from_island
-		if assembling and not _invasion_assembled():continue
+		var assembling=stance=="attack" and sq.order==Vector3.INF and not sq.get("manual_hold",false) and not from_island
+		if assembling and not invasion_ready:continue
 		if alive.all(func(u):return pos(u).distance_to(rally)<2.4) and time-last_departure[side]>=1.0:
 			launch(alive,"player",from_island);sq.erase("port")
 	if not player_lord.dead and not player_lord.transit and player_lord.order!=Vector3.INF and on_island(pos(player_lord))!=on_island(player_lord.order):
@@ -563,10 +686,12 @@ func _transport(dt: float):
 
 func _invasion_assembled() -> bool:
 	var rally=world(map.ports.mainland.rally)
+	var active_count=units_by_team.player.filter(func(u):return not u.dead and not u.garrison and not u.transit).size()
+	var staging_radius=maxf(2.4,sqrt(float(active_count))*.85)
 	for sq in squads:
-		if sq.team!="player" or sq.order!=Vector3.INF:continue
+		if sq.team!="player" or sq.order!=Vector3.INF or sq.get("manual_hold",false):continue
 		for u in sq.members:
-			if not u.dead and not u.garrison and not u.transit and not on_island(pos(u)) and pos(u).distance_to(rally)>=2.4:return false
+			if not u.dead and not u.garrison and not u.transit and not on_island(pos(u)) and pos(u).distance_to(rally)>=staging_radius:return false
 	return true
 
 func launch(members: Array, team: String, from_island: bool, north=false):
@@ -605,14 +730,35 @@ func _combat(dt: float):
 				continue
 			else:u.erase("pending_garrison")
 		var reach=float(u.range)+(u.y-.4)*.8
+		var manual=u if u.role=="lord" else sq
+		var moving_order=manual.get("order",Vector3.INF)!=Vector3.INF
+		var may_engage=not moving_order or manual.get("attack_move",true)
+		var may_chase=may_engage and not manual.get("manual_hold",false)
+		# An explicit enemy click follows that enemy, even under the defend stance.
+		if manual.get("target_id",0) and not u.garrison:
+			var victim=structure_by_id(manual.target_id) if manual.get("target_structure",false) else {}
+			if not manual.get("target_structure",false):
+				for foe in units_by_team.enemy:
+					if foe.id==manual.target_id:victim=foe;break
+			if victim.is_empty() or victim.dead:manual.target_id=0
+			else:
+				var distance=pos(u).distance_to(pos(victim))
+				if victim.has("half"):distance=Vector2(maxf(0,absf(victim.x-u.x)-victim.half.hx),maxf(0,absf(victim.z-u.z)-victim.half.hz)).length()
+				if distance<=reach:
+					if u.timer<=0:
+						if u.get("isRanged",false):shoot(u,victim,victim.has("cells"))
+						elif victim.has("cells"):strike_structure(u,victim)
+						else:victim.hp-=u.dmg*morale(u.team);u.timer=u.cooldown;u.swing=.3;changed.emit("sound","hit")
+				else:move(u,pos(victim),dt,u.team,reach*.85)
+				continue
 		# Siege guns clear defensive fire before spending shots on nearby infantry.
 		# Their range is the counter to a fortified landing, on both teams.
-		if u.get("isSiege",false) and u.get("isRanged",false) and (u.team=="enemy" or stance=="attack" or sq.get("order",Vector3.INF)!=Vector3.INF):
+		if may_engage and u.get("isSiege",false) and u.get("isRanged",false) and (u.team=="enemy" or stance=="attack" or sq.get("order",Vector3.INF)!=Vector3.INF):
 			var defense=closest_structure(u,reach,true)
 			if defense:
 				if u.timer<=0:shoot(u,defense,true)
 				continue
-		var enemy=nearest_enemy(u,maxf(reach,4.1)) if u.role!="ram" else {}
+		var enemy=nearest_enemy(u,maxf(reach,4.1)) if u.role!="ram" and may_engage else {}
 		if enemy:
 			var dist=pos(u).distance_to(pos(enemy))
 			if dist<=reach:
@@ -621,19 +767,23 @@ func _combat(dt: float):
 					if u.get("isRanged",false):shoot(u,enemy)
 					else:enemy.hp-=u.dmg*morale(u.team);u.timer=u.cooldown;u.swing=.3;changed.emit("sound","hit")
 				continue
-			elif not u.garrison and u.order==Vector3.INF:move(u,pos(enemy),dt,u.team,reach*.85);continue
+			elif not u.garrison and may_chase:move(u,pos(enemy),dt,u.team,reach*.85);continue
 		if u.garrison:continue
+		if manual.get("manual_hold",false) and not moving_order:continue
 		var goal:Vector3=u.order
 		if u.role!="lord":
-			if sq.get("order",Vector3.INF)!=Vector3.INF:goal=sq.order
+			if sq.get("order",Vector3.INF)!=Vector3.INF:goal=apron(sq.order+u.get("command_slot",Vector3.ZERO),u.team)
 			elif u.team=="enemy":goal=sq.anchor if sq.get("guard",false) else pos(player_keep)
 			elif stance=="attack":goal=pos(enemy_keep) if not enemy_keep.dead else pos(enemy_lord)
 			elif stance=="sally":
 				var foe=nearest_enemy(u,30);goal=pos(foe) if foe else sq.anchor
-			else:goal=sq.get("anchor",pos(u))
+			else:
+				goal=sq.get("anchor",pos(u))+u.get("formation_slot",Vector3.ZERO)
+				if u.get("formation_ready",false):continue
+				if Vector2(u.x-goal.x,u.z-goal.z).length()<.65:u.formation_ready=true;continue
 		if goal!=Vector3.INF:
 			var structure=closest_structure(u,reach)
-			if structure and (u.team=="enemy" or stance=="attack"):
+			if structure and may_engage and (u.team=="enemy" or stance=="attack" or sq.get("attack_move",false)):
 				if u.get("isRanged",false):
 					if u.timer<=0:shoot(u,structure,true)
 				else:strike_structure(u,structure)
@@ -641,7 +791,7 @@ func _combat(dt: float):
 				u.order=Vector3.INF
 				if u.get("enter",0):u.garrison=u.enter;u.erase("enter")
 	# Local separation; passengers and garrisons belong to their platforms.
-	UnitSeparation.apply(self,units+workers)
+	UnitSeparation.apply(self,units+workers+civilians)
 	for s in structures:
 		if s.dead or s.type!="ballista":continue
 		s.timer-=dt
@@ -669,7 +819,7 @@ func closest_structure(u: Dictionary, radius: float, prioritize_forts=false) -> 
 	for s in structures_by_team["enemy" if u.team=="player" else "player"]:
 		if s.dead:continue
 		var d=Vector2(maxf(0,absf(s.x-u.x)-s.half.hx),maxf(0,absf(s.z-u.z)-s.half.hz)).length()
-		var rank={"ballista":0,"tower":1,"gate":2,"wall":3,"keep":4}.get(s.type,5) if prioritize_forts else 0
+		var rank={"ballista":0,"tower":1,"gate":2,"waterGate":2,"wall":3,"keep":4}.get(s.type,5) if prioritize_forts else 0
 		if d<radius and (rank<priority or (rank==priority and d<best)):best=d;priority=rank;result=s
 	return result
 

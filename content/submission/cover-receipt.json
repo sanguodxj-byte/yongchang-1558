@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "dimensions": [
+    1600,
+    900
+  ],
+  "bytes": 533667,
+  "sha256": "eab9527f6190edf369c0225c0297c37a616152692f6a206b63c8bb720df79b19",
+  "artworkSource": "game/assets/ui/title-guohua.png",
+  "artworkSha256": "3b8c4efab34927bed95753d920c42e0207b8ba12f43ba113f177fb898e4125d0",
+  "fontSource": "game/assets/title-kai.ttf",
+  "fontSha256": "f4b8a34d1f838fe411540cb7c97b1c384ac9738a876c4104500bc42508b2312a",
+  "method": "Center crop existing 2560x1600 title painting to 16:9, resize, add title and team typography. No new generative image call.",
+  "license": "CC BY 4.0 for original cover composition; original font remains SIL OFL 1.1.",
+  "attribution": "守望1558：永昌风云 / 格尼尔工作室（三哒锅酱）及项目贡献者"
+}

@@ -73,6 +73,10 @@ with sync_playwright() as pw:
   for name in ['interval_ms','simulation_ms','camera_ms','visuals_ms','hud_ms','script_ms','draw_calls','primitives','static_bytes','nodes']:
    values=data[:,columns.index(name)];summary[name]={'p50':float(np.percentile(values,50)),'p95':float(np.percentile(values,95)),'p99':float(np.percentile(values,99)),'mean':float(np.mean(values)),'max':float(np.max(values))}
   summary['over33ms']=int(np.sum(data[:,2]>33.333));summary['frames']=len(rows);summary['engineFramesAdvanced']=int(data[-1,-1]-data[0,-1]);summary['onePercentLowFps']=1000/float(np.mean(np.sort(data[:,2])[-max(1,len(data)//100):]))
+  expected='pause' if label=='paused' else 'play'
+  assert initial['state']==final['state']==expected,'Scenario interrupted: '+label
+  elapsed=final['time']-initial['time']
+  assert (elapsed==0 if expected=='pause' else elapsed>=a.seconds*.75),'Simulation did not advance: '+label
   report['samples'].append({'scenario':label,'initial':initial,'final':final,'columns':columns,'rows':rows,'summary':summary,'machineCpuPercent':cpus,'memory':memory,'load':loads});print(json.dumps({'scenario':label,'frames':len(rows),'p95':summary['interval_ms']['p95'],'scriptP95':summary['script_ms']['p95'],'visualsP95':summary['visuals_ms']['p95']}),flush=True)
  try:
   receipt=page.request.get(a.url+'BUILD.json').json();report['pckSha256']=receipt['sha256'];assert hashlib.sha256(page.request.get(a.url+'game.pck').body()).hexdigest()==receipt['sha256']

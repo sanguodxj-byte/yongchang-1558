@@ -151,6 +151,8 @@ with sync_playwright() as pw:
    touches('touchEnd',[]);wait('__yongchang.state.touches===0 && !__yongchang.state.touch_gesture')
    assert state()['stats']['built']==0 and state()['camera']!=initial['camera'],state()
    probe=page.evaluate('__yongchang.buildProbe');tap(probe['x'],probe['y'],True)
+   wait('__yongchang.state.build_ready')
+   click('确认营造',True)
    wait('__yongchang.state.stats.built===1')
    assert state()['resources']['wood']==82
    click('取消',True);click('募勇',True);wait('__yongchang.state.tray==="army"')

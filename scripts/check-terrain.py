@@ -38,13 +38,25 @@ for z in range(h):
   sizes.append(count)
 main=components[45,48];ix,iz=d["map"]["ports"]["island"]["landing"];island=components[iz,ix]
 check('mainland and island separated by sea',main>=0 and island>=0 and main!=island,{'mainlandCells':sizes[main],'islandCells':sizes[island]})
-check('both mainland landing sites reachable',components[49,100]==main and components[22,100]==main)
+check('both mainland landing sites reachable',all(components[p['landing'][1],p['landing'][0]]==main for name,p in d['map']['ports'].items() if name!='island'))
 resource_access=[]
 for dep in d['deposits']:
  x,z=dep['gx'],dep['gz'];neighbors=[components[z+dz,x+dx] for dx,dz in [(1,0),(-1,0),(0,1),(0,-1)]]
  resource_access.append(main in neighbors)
 check('all resource deposits accessible',all(resource_access),{'deposits':len(resource_access)})
-check('forest bases match terrain',all(abs(t['model']['position'][1]-d['cells'][t['gz']*w+t['gx']]['h'])<.15 for t in d['trees']),{'trees':len(d['trees'])})
+def sampled_height(x,z):
+ x=(x+w/2)*resolution;z=(z+h/2)*resolution;ix=int(x);iz=int(z);tx=x-ix;tz=z-iz
+ a,b,c,dd=heights[iz,ix],heights[iz,ix+1],heights[iz+1,ix],heights[iz+1,ix+1]
+ return a*(1-tx)+b*(tx-tz)+dd*tz if tx>=tz else a*(1-tz)+dd*tx+c*(tz-tx)
+check('forest trunk bases are planted into actual slope',all(-.26<t['model']['position'][1]-sampled_height(t['x'],t['z'])<.035 for t in d['trees']),{'trees':len(d['trees'])})
+check('terrain has no per-cell rock proxy meshes',not any('rock obstacles' in n['name'].lower() for n in d['staticNodes']))
+bad=[]
+for i,c in enumerate(d['cells']):
+ if c['buildable'] or c['bridge'] or c['ground']=='water':continue
+ patch=heights[(i//w)*resolution:(i//w+1)*resolution+1,(i%w)*resolution:(i%w+1)*resolution+1]
+ valid=c['slope']>d['terrain']['maxWalkSlope'] or patch.min()<=d['terrain']['waterLevel']+.0151 or c['ground']=='tidal_mud' and c['h']<d['terrain']['waterLevel']+.30
+ if not valid:bad.append([i%w,i//w])
+check('dry terrain restrictions come from actual slope water or wet soil',not bad,{'unexplained':bad[:10]})
 for name,x,z in [('west-ridge',8,48),('village',43,43),('coastal-plain',86,49)]:
  c=d['cells'][z*w+x];print('Height anchor',name,c['h'])
 check('western ridges dominate low plain',d['cells'][48*w+8]['h']>4 and d['cells'][43*w+43]['h']<1 and d['cells'][49*w+86]['h']<1)

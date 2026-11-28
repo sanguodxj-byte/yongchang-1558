@@ -1,6 +1,7 @@
 extends Control
 
 signal navigate(target: Vector3)
+signal order(target: Vector3,queued:bool)
 var session
 var camera_target=Vector3.ZERO
 var texture: ImageTexture
@@ -40,6 +41,12 @@ func _draw():
 	draw_rect(Rect2(cam-Vector2(13,9),Vector2(26,18)),Color("f3dda3"),false,1)
 
 func _gui_input(event):
-	if event is InputEventMouseButton and event.pressed and event.button_index==MOUSE_BUTTON_LEFT:
-		var uv=(event.position-Vector2(6,6))/(size-Vector2(12,12))
-		navigate.emit(Vector3(uv.x*session.map.width-session.map.width/2.0,.4,uv.y*session.map.height-session.map.height/2.0))
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index==MOUSE_BUTTON_LEFT:navigate.emit(_target(event.position))
+		elif event.button_index==MOUSE_BUTTON_RIGHT:order.emit(_target(event.position),event.shift_pressed or Input.is_key_pressed(KEY_SHIFT))
+	elif event is InputEventMouseMotion and event.button_mask&MOUSE_BUTTON_MASK_LEFT:navigate.emit(_target(event.position))
+
+func _target(at:Vector2) -> Vector3:
+	var uv=((at-Vector2(6,6))/(size-Vector2(12,12))).clamp(Vector2.ZERO,Vector2.ONE)
+	var target=Vector3(uv.x*session.map.width-session.map.width/2.0,0,uv.y*session.map.height-session.map.height/2.0)
+	target.y=session.terrain.visible_height(target);return target

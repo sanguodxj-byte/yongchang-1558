@@ -49,11 +49,17 @@ func _setup_hud():
 	repair_button=button("修城",func():game.session.repair());fire_button=button("引火",func():game.session.ignite())
 	contextual_actions.add_child(repair_button);contextual_actions.add_child(fire_button)
 	build_controls=HBoxContainer.new();build_controls.add_theme_constant_override("separation",6);_place(build_controls,play_hud,Vector2(8,extent.y-112),Vector2(extent.x-16,48))
-	selected_label=label("",16);selected_label.size_flags_horizontal=Control.SIZE_EXPAND_FILL;selected_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;build_controls.add_child(selected_label)
+	var selected_paper=PanelContainer.new();selected_paper.add_theme_stylebox_override("panel",skin("paper"));selected_paper.size_flags_horizontal=Control.SIZE_EXPAND_FILL;build_controls.add_child(selected_paper)
+	selected_label=label("",16);selected_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;selected_paper.add_child(selected_label)
 	build_controls.add_child(button("转向 R",func():game.build_rotation=(game.build_rotation+1)%4;game._refresh_ghost(),Vector2(76,48)))
 	build_controls.add_child(button("取消",func():game._cancel_placement();refresh(),Vector2(64,48)))
+	confirm_build_button=button("确认营造",func():game.touch_controls.confirm_build(),Vector2(84,48),"jade");build_controls.add_child(confirm_build_button)
+	selection_controls=HBoxContainer.new();selection_controls.add_theme_constant_override("separation",4);_place(selection_controls,play_hud,Vector2(8,extent.y-112),Vector2(extent.x-16,48));_selection_buttons(selection_controls,Vector2(58,48))
+	for pair in [["stop","停止"],["attack","攻击"],["queue","路点"],["box","框选"],["clear","取消"]]:_caption(selection_actions[pair[0]],pair[1])
+	touch_select_button=button("框选部队",func():game.controls.toggle_box(),Vector2(72,48));_caption(touch_select_button,"框选");_place(touch_select_button,play_hud,Vector2(164,extent.y-112),Vector2(72,48))
 	minimap=MiniMap.new();minimap.setup(game.session);minimap.hide();play_hud.add_child(minimap)
 	minimap.navigate.connect(func(target):game.camera_target=target;close_popover())
+	minimap.order.connect(func(target,queued):game._order(target,queued);close_popover())
 
 func _setup_tray():
 	tray=_panel(play_hud,Vector2(8,extent.y-312),Vector2(extent.x-16,248));var box=VBoxContainer.new();box.add_theme_constant_override("separation",4);tray.add_child(box)
@@ -71,9 +77,15 @@ func toggle_popover(kind:String):
 	if screen!="play":return
 	if popover_kind==kind:close_popover();return
 	tray.hide();game._cancel_placement();popover_kind=kind;_clear(popover_box);clan_actions.clear();stance_actions.clear();popover.show()
-	var header=HBoxContainer.new();popover_box.add_child(header);var title=label({"guide":"守望指引","map":"地图与资源","clan":"宗族议事","command":"全军号令","site":"工坊状态","stores":"物资与丁口"}.get(kind,kind),22);title.size_flags_horizontal=Control.SIZE_EXPAND_FILL;header.add_child(title);header.add_child(button("收起",close_popover,Vector2(64,48)))
+	var header=HBoxContainer.new();popover_box.add_child(header);var title=label({"guide":"守望指引","map":"地图","resources":"资源定位","clan":"宗族议事","command":"全军号令","site":"工坊状态","stores":"物资与丁口"}.get(kind,kind),22);title.size_flags_horizontal=Control.SIZE_EXPAND_FILL;header.add_child(title)
+	if kind=="map":header.add_child(button("资源定位",func():toggle_popover("resources"),Vector2(96,48)))
+	if kind=="resources":header.add_child(button("返回地图",func():toggle_popover("map"),Vector2(96,48)))
+	header.add_child(button("收起",close_popover,Vector2(64,48)))
 	if kind=="map":
-		var map_copy=MiniMap.new();map_copy.setup(game.session);map_copy.custom_minimum_size=Vector2(0,100);map_copy.navigate.connect(func(target):game.camera_target=target;close_popover());popover_box.add_child(map_copy)
+		var map_copy=MiniMap.new();map_widget=map_copy;map_copy.setup(game.session);map_copy.custom_minimum_size=Vector2(0,100);map_copy.navigate.connect(func(target):game.camera_target=target;close_popover());popover_box.add_child(map_copy)
+		map_copy.order.connect(func(target,queued):game._order(target,queued);close_popover())
+		_camera_buttons(popover_box)
+	elif kind=="resources":
 		var grid=GridContainer.new();grid.columns=2 if extent.x<600 else 4;popover_box.add_child(grid)
 		for site in game.SiteInspector.locations(game.session):grid.add_child(button(site.name,func():game.locate(site.key),Vector2(150,48)))
 		grid.add_child(button("全图 M",func():game._overview();close_popover(),Vector2(150,48)))
@@ -182,7 +194,7 @@ func refresh():
 	for key in resource_labels:resource_labels[key].text={"wood":"木","stone":"石","food":"粮","gold":"银","peasants":"闲"}[key]+str(int(s.res[key]))
 	phase_label.text=("准备中" if s.training else "第%d幕 %s %02d:%02d"%[s.wave,"倭袭" if s.night else "备战",int(s.phase_timer)/60,int(s.phase_timer)%60])+" · 宗长%d%% · 点此查物资"%int(hp_player.value*100)
 	_caption(command_button,"军令")
-	clan_button.visible=game.selected_build=="" and not tray.visible;guide_button.visible=clan_button.visible;speed_button.visible=clan_button.visible
+	clan_button.visible=game.selected_build=="" and not tray.visible and not selection_controls.visible;guide_button.visible=clan_button.visible;speed_button.visible=clan_button.visible
 	for key in card_buttons:
 		if game.selected_tab!="build":continue
 		var parts=[]

@@ -1,0 +1,14 @@
+{
+  "id": "battle",
+  "title": "破浪归航",
+  "model": "lyria-3.5",
+  "prompt": "Original instrumental action-strategy game score, 90 seconds, historical Chinese coastal battle. Resolute disciplined energy, coordinated soldiers crossing the sea to break a fortress, heroic but not bombastic. Pipa rhythmic figures, low bowed strings, Chinese war drums in steady measured patterns, sheng and dizi melody, sparse bronze percussion. 112 BPM with a memorable pentatonic theme and alternating dense and open phrases. Controlled low end, warm midrange, little piercing high-frequency energy, leave space for cannons and commands. Build toward a brief hopeful cadence and a clean musical resolution. No vocals, no choir, no speech, no electric guitars, no EDM, no modern snare rolls, no wall of trailer impacts.",
+  "generatedAt": "2026-11-27T19:55:11.843613+00:00",
+  "elapsedSeconds": 35.45,
+  "file": "game/assets/music/battle.mp3",
+  "sha256": "b2bb66eafe1888477781c31dd98a81ed0f3cb66d858f5759e3ffaafcc1fc7ca8",
+  "bytes": 2222064,
+  "duration": 92.264417,
+  "postprocessing": "None",
+  "humanListeningApproved": false
+}

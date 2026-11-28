@@ -1,0 +1,61 @@
+{
+  "team": "格尼尔工作室",
+  "captainAndSubmitter": "三哒锅酱",
+  "title": "守望1558：永昌风云",
+  "theme": "守·望",
+  "repository": "https://atomgit.com/sanguodxj/yongchang-1558",
+  "verifiedGameplayCommit": "2843e00f81fc557c39d7b36dad73762bd0ddb95f",
+  "demoPatchSinceBase": "胜利页刷新前检查音效按钮是否仍有效；已同步到工作区，未包含并行地形/RTS改动",
+  "finalReviewCommit": null,
+  "oneLineDescription": "从四户村落起步，经营粮械、筑城募勇、乘舟反攻，守望永昌乡土。",
+  "fullDescriptionFile": "docs/submission/entry.md",
+  "cover": "content/submission/cover-1600x900.jpg",
+  "coverWidth": 1600,
+  "coverHeight": 900,
+  "coverMaxBytes": 2000000,
+  "videoFile": ".build/submission/守望1558-参赛演示.mp4",
+  "bilibiliUrl": null,
+  "bilibiliActivityTag": "2026 开源游戏开发大赛",
+  "devlogUrls": [
+    null,
+    null,
+    null
+  ],
+  "devlogDrafts": [
+    "docs/submission/devlog-01.md",
+    "docs/submission/devlog-02.md",
+    "docs/submission/devlog-03.md",
+    "docs/submission/devlog-04-xiaohongshu.md",
+    "docs/submission/devlog-05-water-defenses.md"
+  ],
+  "suggestedScoringFocus": [
+    {
+      "dimension": "玩法",
+      "points": 1
+    },
+    {
+      "dimension": "创意",
+      "points": 1
+    }
+  ],
+  "registration": "completed, confirmed by captain",
+  "submissionOpensBeijing": "2026-11-28T23:59:00+08:00",
+  "submissionOpeningSource": "Captain's personal-center notice, received 2026-11-28",
+  "submissionDeadlineBeijing": "2026-12-06T23:59:00+08:00",
+  "atompieUrl": null,
+  "atompieLikesVerified": null,
+  "officialSubmissionReceipt": null,
+  "pendingOwnerFacts": [
+    "其他成员署名与分工",
+    "赛前自有代码和素材",
+    "此前使用的其他AI工具及人工修改范围"
+  ],
+  "readyForFinalSubmission": false,
+  "latestDevlog": {
+    "file": "docs/submission/devlog-05-water-defenses.md",
+    "coverLandscape": "content/submission/water-defenses-20261128/cover-1600x900.jpg",
+    "coverPortrait": "content/submission/water-defenses-20261128/cover-1080x1440.jpg",
+    "text": "content/submission/water-defenses-20261128/发布文案.txt",
+    "socialUrl": null
+  }
+}

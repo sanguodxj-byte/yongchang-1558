@@ -51,13 +51,13 @@ with sync_playwright() as pw:
   for w,h in [(844,390),(390,844),(360,740)]:
    prefix=str(w);page=boot(w,h);capture(prefix+'-title');click('步入永昌卫城',True);capture(prefix+'-menu');click('新手准备',True)
    check(prefix+' training boot',state()['training'] and state()['state']=='play');capture(prefix+'-play')
-   click('地图',True);capture(prefix+'-map');before=state()['camera'];click('山麓石矿',True);check(prefix+' locates stone',math.dist(state()['camera'],[-91.5,-8.5])<1);capture(prefix+'-stone')
+   click('地图',True);capture(prefix+'-map');click('资源定位',True);before=state()['camera'];click('山麓石矿',True);check(prefix+' locates stone',math.dist(state()['camera'],[-91.5,-8.5])<1);capture(prefix+'-stone')
    click('营造 B',True);capture(prefix+'-build');click('下一页',True);capture(prefix+'-cards-next');click('收起',True)
-   click('地图',True);click('宗祠与村落',True);click('营造 B',True);click('水乡民生',True)
+   click('地图',True);click('资源定位',True);click('宗祠与村落',True);click('营造 B',True);click('水乡民生',True)
    for _ in range(5):
     if '江南水车稻田' in '\n'.join(page.evaluate('Object.keys(__yongchang.ui)')):break
     click('下一页',True)
-   click('江南水车稻田',True);page.touchscreen.tap(*ground_point(47,54));page.wait_for_function('__yongchang.state.stats.built===1');click('取消',True);check(prefix+' actual touch builds farm',state()['stats']['built']==1)
+   click('江南水车稻田',True);page.touchscreen.tap(*ground_point(47,54));page.wait_for_function('__yongchang.state.build_ready');click('确认营造',True);page.wait_for_function('__yongchang.state.stats.built===1');click('取消',True);check(prefix+' actual touch builds farm',state()['stats']['built']==1)
    page.touchscreen.tap(*ground_point(47,54));page.wait_for_function('__yongchang.state.context==="site"');capture(prefix+'-site');click('收起',True)
    click('宗族',True);capture(prefix+'-clan');click('收起',True);click('军令',True);capture(prefix+'-command');click('收起',True)
    click('指引',True);capture(prefix+'-guide');click('准备迎敌',True);check(prefix+' begins regular countdown',not state()['training'] and state()['wave']==1)

@@ -1,0 +1,45 @@
+{
+  "pckSha256": "a313ea7051f1cb4a282d2852a56687be6ccb4c2498008c4880e2a0e6192b9387",
+  "files": {
+    "village.jpg": {
+      "source": ".build/performance-current/fortress/live-economy/developed-village.png",
+      "sourceSha256": "83c767b80e633713ef759ac889c0d3b3e492dbcae204a38324daee36a0544a7f",
+      "sha256": "af7b8075d346811e3fb36b9da0ac6e008f6f465011fedc1181457c5eca6b733d",
+      "dimensions": [
+        1600,
+        1000
+      ],
+      "method": "JPEG encoding only; no gameplay content changes"
+    },
+    "quarry.jpg": {
+      "source": ".build/performance-current/worksites/live/working-quarry.png",
+      "sourceSha256": "a3c6a31fe8f00d300640403e5502bf975e67706626b872858e58922ad347611d",
+      "sha256": "9b1f84a239203aef293f974353dba2fb946c92dc6d5bc332db8f140fb2b830cf",
+      "dimensions": [
+        1600,
+        1000
+      ],
+      "method": "JPEG encoding only; no gameplay content changes"
+    },
+    "assault.jpg": {
+      "source": ".build/performance-current/fortress/live-economy/island-assault.png",
+      "sourceSha256": "f77179e64ce398f0332701f4b8771a2f1f1fe95a33a16dccfb58f605f0d8ecc6",
+      "sha256": "9ec8633a63949be16c5c207f8d5c739211ddd3bc2d26d445f746599d42da4185",
+      "dimensions": [
+        1600,
+        1000
+      ],
+      "method": "JPEG encoding only; no gameplay content changes"
+    },
+    "motion.jpg": {
+      "source": ".build/performance-current/motion/work-sheet.jpg",
+      "sourceSha256": "0c603fc34a5f479281a5c3511ab65a2c9578e1dba218ad3d6ee91800746852b7",
+      "sha256": "c66ed4183d883fb9a91c997853a00f19652eb60ee80d197d31b95b579f90faff",
+      "dimensions": [
+        1800,
+        1080
+      ],
+      "method": "JPEG encoding only; no gameplay content changes"
+    }
+  }
+}

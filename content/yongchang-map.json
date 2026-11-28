@@ -9,8 +9,8 @@
   "contextMargin": 64,
   "samplesPerCell": 2,
   "waterLevel": -0.22,
-  "maxWalkSlope": 0.58,
-  "maxBuildRelief": 0.28,
+  "maxWalkSlope": 0.72,
+  "maxBuildRelief": 1.1,
   "map": {
     "width": 224,
     "height": 96,
@@ -126,18 +126,12 @@
     },
     "ports": {
       "mainland": {
-        "pier": [
-          94,
-          48,
-          102,
-          51
-        ],
         "rally": [
-          100,
+          94,
           49
         ],
         "landing": [
-          99,
+          94,
           49
         ],
         "boat": [
@@ -146,12 +140,6 @@
         ]
       },
       "island": {
-        "pier": [
-          178,
-          48,
-          185,
-          51
-        ],
         "rally": [
           181,
           49
@@ -166,14 +154,8 @@
         ]
       },
       "north": {
-        "pier": [
-          94,
-          21,
-          103,
-          24
-        ],
         "landing": [
-          100,
+          98,
           22
         ],
         "boat": [
@@ -364,7 +346,6 @@
       "overviewZoom": 150,
       "maxZoom": 185
     },
-    "buildLimitX": 83,
     "seaBoundaryX": 140,
     "enemyGuards": [
       {
@@ -475,148 +456,132 @@
   ],
   "canals": [
     {
-      "name": "上河示意",
-      "width": 1.65,
+      "name": "上河低地水道（示意）",
+      "kind": "tidal",
+      "width": 1.25,
       "points": [
         [
-          -1,
-          -42
+          34,
+          -64
         ],
         [
-          25,
-          -20
+          34.8,
+          -32
         ],
         [
-          35,
-          -10
+          35.6,
+          -8
         ],
         [
-          36,
+          35.8,
           9
         ],
         [
-          37.5,
-          21
+          36.6,
+          19
         ],
         [
-          38,
+          37.5,
           29
         ],
         [
-          38,
+          38.8,
+          38
+        ],
+        [
+          37.5,
           49
         ],
         [
-          38.2,
+          36.4,
+          59
+        ],
+        [
+          37.5,
           69
         ],
         [
-          39,
+          39.2,
           80
         ],
         [
-          47,
-          90
+          47.5,
+          87
         ],
         [
-          65,
-          97
+          57.5,
+          91
         ],
         [
-          94,
-          104
-        ],
-        [
-          112,
-          97
+          65.5,
+          89
         ]
       ]
     },
     {
-      "name": "下河示意",
-      "width": 1.65,
+      "name": "下河低地水道（示意）",
+      "kind": "tidal",
+      "width": 1.2,
       "points": [
         [
-          71,
-          -42
-        ],
-        [
           62,
-          -22
+          -64
         ],
         [
-          56,
-          -10
+          59,
+          -32
         ],
         [
-          55,
+          55.8,
+          -8
+        ],
+        [
+          54.4,
           14
         ],
         [
-          54.5,
+          54.0,
           32
         ],
         [
-          54,
+          52.7,
+          40
+        ],
+        [
+          53.5,
           49
         ],
         [
-          54,
+          54.4,
+          59
+        ],
+        [
+          53.5,
           69
         ],
         [
-          55,
+          54.5,
           82
         ],
         [
-          66,
+          65.5,
           89
         ],
         [
-          82,
+          81.5,
           88
         ],
         [
-          96,
+          95.5,
           83
         ],
         [
           108,
           80
-        ]
-      ]
-    },
-    {
-      "name": "山麓溪流",
-      "width": 1.05,
-      "points": [
-        [
-          -30,
-          0
         ],
         [
-          -10,
-          9
-        ],
-        [
-          1,
-          13
-        ],
-        [
-          11,
-          19
-        ],
-        [
-          23,
-          16
-        ],
-        [
-          31,
-          11
-        ],
-        [
-          36,
-          9
+          130,
+          80
         ]
       ]
     }
@@ -1328,7 +1293,8 @@
         28,
         40,
         30
-      ]
+      ],
+      "material": "timber"
     },
     {
       "name": "上河中桥",
@@ -1337,7 +1303,8 @@
         48,
         40,
         50
-      ]
+      ],
+      "material": "timber"
     },
     {
       "name": "上河南桥",
@@ -1346,7 +1313,8 @@
         68,
         40,
         70
-      ]
+      ],
+      "material": "timber"
     },
     {
       "name": "下河中桥",
@@ -1355,7 +1323,8 @@
         48,
         56,
         50
-      ]
+      ],
+      "material": "timber"
     },
     {
       "name": "下河南桥",
@@ -1364,7 +1333,8 @@
         68,
         56,
         70
-      ]
+      ],
+      "material": "timber"
     }
   ],
   "routeChecks": [
@@ -1375,11 +1345,11 @@
         45
       ],
       "to": [
-        100,
+        94,
         49
       ],
       "lengthRange": [
-        50,
+        45,
         95
       ]
     },
@@ -1390,11 +1360,11 @@
         45
       ],
       "to": [
-        100,
+        98,
         22
       ],
       "lengthRange": [
-        65,
+        60,
         135
       ]
     },
@@ -1457,12 +1427,67 @@
       "pre-1558 village water layout",
       "field boundaries",
       "routes",
-      "shoreline"
+      "shoreline",
+      "canal width, spacing and bends; internal waterways, not two natural rivers"
     ],
     "fiction": [
       "Black Shark island",
       "mineral locations",
       "offshore distance and layered fortress balance"
     ]
+  },
+  "initialScenery": {
+    "policy": "initial buildings and wooden bridges only; natural terrain elsewhere",
+    "bridges": "timber",
+    "bankStructures": false,
+    "decorativeBoats": false,
+    "quays": false,
+    "roadSurfacing": false,
+    "fieldRows": false
+  },
+  "landscapeRevision": 4,
+  "geology": {
+    "bedrockColor": [0.155, 0.158, 0.132],
+    "weatheredColor": [0.18, 0.157, 0.12],
+    "mossColor": [0.088, 0.125, 0.059],
+    "ironStainColor": [0.155, 0.095, 0.055],
+    "resourceAppearance": "low embedded weathered bedrock with subdued iron oxidation; no bright ore crystals",
+    "scope": "stylized geology for gameplay; mineral locations are not surveyed historical deposits"
+  },
+  "naturalTerrain": {
+    "bankWidth": 1.8,
+    "tidalDepth": 0.32,
+    "coastalWetHeight": 0.12,
+    "rockProps": false,
+    "wetlandTufts": "patches",
+    "source": "stylized coastal alluvial plain; no surveyed ancient courses"
+  },
+  "vegetation": {
+    "candidateCount": 100000,
+    "minTrunkSpacing": 0.95,
+    "maxTreeSlope": 0.9,
+    "distribution": "continuous hill woods, patchy alluvial woods, riparian fringes and sheltered island woodland",
+    "scope": "gameplay vegetation model, not a reconstruction of historical forest cover",
+    "densityTargets": {
+      "westernTreesPer100DryCells": [
+        20,
+        55
+      ],
+      "foothillTreesPer100DryCells": [
+        15,
+        50
+      ],
+      "easternTreesPer100DryCells": [
+        10,
+        38
+      ],
+      "islandTreesPer100DryCells": [
+        8,
+        30
+      ]
+    },
+    "backdropCandidateCount": 240000,
+    "spatialBatchSize": 24,
+    "autumnVariantWeight": 0.1
   }
 }

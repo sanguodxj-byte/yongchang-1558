@@ -1,0 +1,13 @@
+{
+  "asset": "game/assets/ui/buildings-waterGate.png",
+  "method": "Godot render of the same procedural masonry, arch and iron-grille mesh used by gameplay",
+  "generator": "scripts/capture-water-defenses.py --portrait",
+  "license": "CC-BY-4.0 for the image; AGPL-3.0-only for code",
+  "sourceHashes": {
+    "game/scripts/watergate_model.gd": "99f318ac0a3a73157bf534635ee4dc05d17ec45714cb51be137e2f1e45cfd7d3",
+    "game/shaders/surface.gdshader": "ebf64ff3e1e3bbb7fd459251bf485180083344a7fcb086e3c25fe515b5bd81e8",
+    "game/assets/ui/buildings-waterGate.png": "8ed9ef6e68f513bc16abdd1c0f2fce5791dea0e9307517ccd685152138fe4234",
+    "game/tests/water-defenses-visual.gd": "7792eeccf5238c23e148368df78c13b68f06ebf289d15a000cf3c55070e7a752",
+    "scripts/capture-water-defenses.py": "3a86e3e06b6ccdf9dfecbf6421977e29347b15eed5148f593965eaca23232cf3"
+  }
+}

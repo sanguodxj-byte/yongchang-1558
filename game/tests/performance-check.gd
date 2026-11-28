@@ -6,13 +6,6 @@ var checks=[]
 var failed=false
 var output=""
 
-class Ground:
-	extends RefCounted
-	var occupied={Vector2i(0,1):true,Vector2i(-2,-1):true}
-	func grid(p:Vector3):return Vector2i(floori(p.x),floori(p.z))
-	func cell(p:Vector2i):return {"walkable":p!=Vector2i(1,0)}
-	func elevation(p:Vector3):return .25+p.x*.05+p.z*.03
-
 func check(label:String,ok:bool,detail:Variant=null):
 	checks.append({"name":label,"passed":ok,"detail":detail});failed=failed or not ok
 	print("PERF CHECK ",label," ",ok)
@@ -21,24 +14,6 @@ func _initialize():
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--report="):output=arg.trim_prefix("--report=")
 	call_deferred("run")
-
-# Retained original all-pairs equations: independent reference for the broad phase.
-func reference_separation(session,actors:Array):
-	for i in actors.size():
-		var a=actors[i]
-		if a.dead or a.get("transit",false) or a.get("garrison",0):continue
-		for j in range(i+1,actors.size()):
-			var b=actors[j]
-			if b.dead or b.get("transit",false) or b.get("garrison",0):continue
-			var delta=Vector2(a.x-b.x,a.z-b.z);var distance=delta.length();var radius=.44 if a.get("role","")!="knight" and not a.get("ox",false) else .7
-			if distance<radius:
-				var direction=delta/distance if distance>.0001 else Vector2.RIGHT.rotated(float(a.id+b.id))
-				var shove=direction*(radius-distance)*.2
-				for pair in [[a,shove],[b,-shove]]:
-					var n=Vector3(pair[0].x+pair[1].x,pair[0].y,pair[0].z+pair[1].y)
-					var nc=session.cell(session.grid(n))
-					if nc.get("walkable",nc.get("ground","water")!="water") and not session.occupied.has(session.grid(n)):
-						pair[0].x=n.x;pair[0].z=n.z;pair[0].y=session.elevation(n)
 
 func reference_nearest(s,u,radius):
 	var result={};var best=radius
@@ -58,18 +33,8 @@ func reference_structure(s,u,radius,forts):
 	return result
 
 func run():
-	var rng=RandomNumberGenerator.new();rng.seed=839273
-	var ground=Ground.new()
-	for scene in 36:
-		var actors=[]
-		for i in 90:
-			var span=[0.0,.15,1.1,3.0,20.0,100.0][scene%6]
-			actors.append({"id":i+1,"x":rng.randf_range(-span,span)+.99999,"y":.25,"z":rng.randf_range(-span,span)-.00001,"dead":i%13==0,"transit":i%17==0,"garrison":1 if i%19==0 else 0,"role":"knight" if i%5==0 else "spearman","ox":i%7==0})
-		var expected=actors.duplicate(true);var same=true
-		for step in 12:
-			reference_separation(ground,expected);Separation.apply(ground,actors)
-			if actors!=expected:same=false;break
-		check("separation identical scene %d"%scene,same)
+	# Target lookup and profiler invariants remain; collision behavior now has
+	# explicit clearance/arrival tests in crowd-check.gd instead of legacy pair equality.
 	var s=Session.new(JSON.parse_string(FileAccess.get_file_as_string("res://assets/world.json")))
 	for i in 20:s.create_squad("archer" if i%3==0 else "spearman","player" if i%2==0 else "enemy",s.world([45+i%4,55+i/4]),true)
 	var all_queries=true

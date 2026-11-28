@@ -37,7 +37,7 @@ func run():
 	var errors=[];s.changed.connect(func(kind,payload):
 		if kind=="message":errors.append(payload))
 	before=s.res.duplicate();s.build("farm",Vector2i(-1,-1))
-	check("invalid ground placement gives feedback",s.res==before and errors[-1]=="此处不能营造")
+	check("invalid ground placement gives feedback",s.res==before and errors[-1]=="超出地图范围")
 	check("opening guidance describes affordable action",Guidance.objective(s).detail.contains("伐木") and data.initial_resources.wood>=data.buildings.woodcutter.cost.wood)
 	s.stance="attack";check("offensive guidance explains auto transport","30秒" in Guidance.objective(s).detail)
 	s.stats.player_landed=1;check("landing guidance explains two defences","双门" in Guidance.objective(s).detail)

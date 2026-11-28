@@ -158,6 +158,8 @@ func _economy():
 			var shot=s.snapshot();shot.player_keep_hp=s.player_keep.hp;shot.player_army=s.units.filter(func(u):return u.team=="player" and not u.dead and u.role!="lord").size();timeline.append(shot)
 		s.step(1.0/30)
 		if s.state!="play":break
-	var row={"name":"normal economy with scripted decisions","staged":false,"builds":builds,"purchases":purchases,"attackAt":attack_at,"timeline":timeline,"final":s.snapshot()};scenarios.append(row)
+	var worker_states=[]
+	for w in s.workers:worker_states.append({"job":w.job,"state":w.state,"position":str(s.pos(w)),"target":str(w.target),"dead":w.dead,"homeDead":w.home.dead,"pathIndex":w.get("path_index",-1)})
+	var row={"name":"normal economy with scripted decisions","staged":false,"builds":builds,"purchases":purchases,"attackAt":attack_at,"timeline":timeline,"final":s.snapshot(),"workers":worker_states};scenarios.append(row)
 	check("normal economy reaches late offensive",attack_at>=300 and s.stats.deliveries>0 and s.paddy_bonus,row)
 	check("normal economy can win fortified island",s.state=="victory",s.snapshot())
